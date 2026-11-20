@@ -33,9 +33,3 @@ Thumbs.db
 
 # Cache
 **/cache/
-
-# Internal notes and reviews (development)
-AGENTS.md
-GEMINI.md
-CLAUDE.md
-*-review.md
