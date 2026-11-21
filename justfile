@@ -18,6 +18,10 @@ default:
 build:
     dotnet publish -c Release {{ project }} -o {{ publish_dir }}
 
+# Run the unit tests
+test:
+    dotnet test -c Release tests/Jellyfin.Plugin.JellyTag.Tests
+
 # Check that tool versions pinned outside the flake match what the flake provides
 check-pins:
     #!/usr/bin/env bash
