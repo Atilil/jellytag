@@ -99,7 +99,9 @@ item() { # TITLE
 served() { api GET "/Items/$1/Images/Primary" | md5sum | cut -d' ' -f1; }
 original() { md5sum "$work/media/movies/$1 (2024)/poster.jpg" | cut -d' ' -f1; }
 # No API exposes the detection: the middleware logs it once per rendered image.
-badges() { podman logs "$container" 2>&1 | grep -F "badges to $1: " | tail -1 | sed 's/.*: //'; }
+# Sorted: the order of the keys is internal (cache key), each panel sorts its own badges.
+badges() { podman logs "$container" 2>&1 | grep -F "badges to $1: " | tail -1 | sed 's/.*: //' | sorted; }
+sorted() { tr _ '\n' | sort | paste -sd_; }
 
 # --- Badges drawn from the media info Jellyfin read from the files
 
@@ -115,7 +117,7 @@ for title in "${!expected[@]}"; do
     id=$(item "$title")
     rendered[$title]=$(served "$id")
     check "$title: poster has badges" true "$([[ ${rendered[$title]} != "$(original "$title")" ]] && echo true || echo false)"
-    check "$title: detected badges" "${expected[$title]}" "$(badges "$title")"
+    check "$title: detected badges" "$(sorted <<<"${expected[$title]}")" "$(badges "$title")"
 done
 
 # --- Cache, then the plugin switched off
