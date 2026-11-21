@@ -1,0 +1,46 @@
+name: Bug report
+description: A badge is wrong or missing, or JellyTag breaks something.
+labels: [bug]
+body:
+  - type: input
+    id: jellyfin-version
+    attributes:
+      label: Jellyfin version
+      placeholder: "12.4.0"
+    validations:
+      required: true
+  - type: input
+    id: jellytag-version
+    attributes:
+      label: JellyTag version
+      description: Dashboard → Plugins.
+      placeholder: "3.0.0.0"
+    validations:
+      required: true
+  - type: input
+    id: client
+    attributes:
+      label: Client(s)
+      description: Where you see the problem (web, Android TV, Kodi…).
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What you expected and what you see instead. A screenshot helps.
+    validations:
+      required: true
+  - type: textarea
+    id: media-info
+    attributes:
+      label: Media info
+      description: >-
+        For a wrong or missing badge: the media info of the file as shown by
+        Jellyfin (resolution, video range/HDR, codecs, audio channels and
+        languages).
+      render: text
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Lines containing "JellyTag" from the Jellyfin log, around the problem.
+      render: text
