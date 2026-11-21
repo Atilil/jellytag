@@ -22,6 +22,10 @@ build:
 test:
     dotnet test -c Release tests/Jellyfin.Plugin.JellyTag.Tests
 
+# Run every pre-commit check on the whole repo (same as CI)
+lint:
+    pre-commit run --all-files --show-diff-on-failure
+
 # Build the release zip for VERSION (e.g. 3.0.0) into artifacts/, with meta.json from build.yaml
 package VERSION:
     #!/usr/bin/env bash
