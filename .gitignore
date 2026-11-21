@@ -33,3 +33,12 @@ Thumbs.db
 
 # Cache
 **/cache/
+
+# direnv
+.direnv/
+
+# Local Jellyfin test instance
+.dev/
+
+# Release packages (just package)
+artifacts/
