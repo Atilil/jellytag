@@ -26,6 +26,10 @@ test:
 lint:
     pre-commit run --all-files --show-diff-on-failure
 
+# Run the integration tests against a real, offline Jellyfin (podman)
+integration: build
+    tests/integration/run.sh "{{ jellyfin_image }}" "{{ publish_dir }}" "{{ plugin_guid }}"
+
 # Build the release zip for VERSION (e.g. 3.0.0) into artifacts/, with meta.json from build.yaml
 package VERSION:
     #!/usr/bin/env bash
@@ -123,29 +127,8 @@ dev-up:
 
 # Generate test movies covering resolutions, audio layouts and languages, each with a poster
 dev-media:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    media="{{ dev_dir }}/media/movies"
-    # A global LD_LIBRARY_PATH (alsa-lib from the host profile) breaks the flake ffmpeg.
-    ff() { env -u LD_LIBRARY_PATH ffmpeg -loglevel error -y "$@"; }
-    movie() { # $1 title, $2 resolution, $3 audio layout, $4 audio language
-      local dir="$media/$1 (2024)"
-      mkdir -p "$dir"
-      [[ -f "$dir/$1 (2024).mkv" ]] || ff \
-        -f lavfi -i "testsrc=duration=2:size=$2:rate=24" \
-        -f lavfi -i "anullsrc=channel_layout=$3:sample_rate=48000" -t 2 \
-        -c:v libx264 -pix_fmt yuv420p -c:a aac -metadata:s:a:0 "language=$4" \
-        "$dir/$1 (2024).mkv"
-      [[ -f "$dir/poster.jpg" ]] || ff -f lavfi -i "testsrc2=size=1000x1500" -frames:v 1 "$dir/poster.jpg"
-      printf '<?xml version="1.0" encoding="utf-8" standalone="yes"?>\n<movie>\n  <title>%s</title>\n  <year>2024</year>\n</movie>\n' \
-        "$1" > "$dir/$1 (2024).nfo"
-    }
-    movie "JT 4K" 3840x2160 5.1 eng
-    movie "JT 1080p" 1920x1080 stereo fra
-    movie "JT 1080p 4-3" 1440x1080 stereo eng
-    movie "JT 720p" 1280x720 7.1 deu
-    movie "JT SD" 720x576 mono jpn
-    find "$media" -name '*.mkv' | sort
+    tests/fixtures/media.sh "{{ dev_dir }}/media"
+    find "{{ dev_dir }}/media" -name '*.mkv' | sort
 
 # Build, install the plugin into the local instance and restart it
 dev-deploy: build
