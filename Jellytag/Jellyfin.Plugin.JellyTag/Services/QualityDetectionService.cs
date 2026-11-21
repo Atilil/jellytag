@@ -45,12 +45,16 @@ public class QualityDetectionService : IQualityDetectionService
 
     public static VideoQuality DetermineQuality(int width, int height)
     {
-        var maxDimension = Math.Max(width, height);
+        // A tier is reached by the width (wide and scope formats) or the height
+        // (4:3 and other narrow encodes, e.g. 1440x1080 is 1080p). Portrait videos
+        // are handled by comparing the long and the short side.
+        var longSide = Math.Max(width, height);
+        var shortSide = Math.Min(width, height);
 
-        if (maxDimension >= 3800) return VideoQuality.UHD4K;
-        if (maxDimension >= 1900) return VideoQuality.FHD1080p;
-        if (maxDimension >= 1260) return VideoQuality.HD720p;
-        if (maxDimension > 0) return VideoQuality.SD;
+        if (longSide >= 3800 || shortSide >= 2100) return VideoQuality.UHD4K;
+        if (longSide >= 1900 || shortSide >= 1000) return VideoQuality.FHD1080p;
+        if (longSide >= 1260 || shortSide >= 700) return VideoQuality.HD720p;
+        if (longSide > 0) return VideoQuality.SD;
         return VideoQuality.Unknown;
     }
 
