@@ -17,8 +17,8 @@
   <!-- The plugin excludes the Jellyfin assemblies at runtime (the server provides them).
        Tests run without a server, so they bring them in, in the plugin's versions. -->
   <ItemGroup>
-    <PackageReference Include="Jellyfin.Controller" Version="10.11.0" />
-    <PackageReference Include="Jellyfin.Model" Version="10.11.0" />
+    <PackageReference Include="Jellyfin.Controller" Version="12.4.0" />
+    <PackageReference Include="Jellyfin.Model" Version="12.4.0" />
   </ItemGroup>
 
   <ItemGroup>
