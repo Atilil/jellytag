@@ -1,28 +1,29 @@
+---
+# Plugin metadata, single source for meta.json and the manifest entry (`just package`).
+# The version is not here: it comes from the release tag.
 name: "JellyTag"
 guid: "f4a2e8c1-9b3d-4f7a-b6c5-2d8e1a3f9b04"
-version: "1.0.0.0"
-targetAbi: "10.10.0.0"
-framework: "net9.0"
-owner: "JellyTag"
-overview: "Adds quality badges (4K, 1080p, etc.) to media posters and thumbnails."
-description: |
-  JellyTag automatically adds quality resolution badges to your media posters and thumbnails.
-  Badges are visible on all clients including web, mobile, TV, and Kodi.
-
-  Features:
-  - Automatic quality detection based on video resolution
-  - Configurable badge position (corners)
-  - Configurable badge size
-  - Image caching for performance
-  - Support for 4K, 1080p, 720p, and SD badges
-
+targetAbi: "12.0.0.0"
+framework: "net10.0"
+owner: "Atilili"
 category: "General"
+overview: "Overlays quality badges (resolution, HDR, codec, audio, language) on media posters and thumbnails"
+# Folded (>): lines are joined, so the catalog shows real paragraphs.
+description: >
+  JellyTag automatically overlays quality badges on your media posters and
+  thumbnails: resolution, HDR and Dolby Vision, video codec, audio, language
+  flags and VOST indicator. Badges are rendered server-side and visible on all
+  Jellyfin clients.
+
+
+  Per-panel configuration, SVG and text badge styles, custom badge upload, live
+  preview and library filtering.
 artifacts:
   - "Jellyfin.Plugin.JellyTag.dll"
 changelog: |
-  ## v1.0.0.0
-  - Initial release
-  - Quality detection for 4K, 1080p, 720p, SD
-  - Configurable badge position and size
-  - Image caching
-  - HTTP middleware for universal client support
+  - Jellyfin 12.x support (built for 12.4, .NET 10).
+  - Fix 401 errors on configuration export and broken custom badge previews.
+  - Plugin data no longer lives in Jellyfin's plugins folder, which could wipe
+    every plugin's settings on servers whose path contains an underscore (e.g. QNAP).
+  - Narrow 1080p encodes (e.g. 4:3 at 1440x1080) and 4:3 720p are detected correctly.
+  - Uses Jellyfin's own Svg.Skia: the package now ships a single DLL.
