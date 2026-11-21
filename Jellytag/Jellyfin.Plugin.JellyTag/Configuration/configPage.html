@@ -850,7 +850,7 @@
                     card.setAttribute('data-badge-key', b.key);
                     var img = document.createElement('img');
                     var previewUrl = ApiClient.getUrl('JellyTag/BadgePreview/' + b.key);
-                    img.src = previewUrl + '?t=' + Date.now() + (token ? '&api_key=' + token : ''); img.alt = b.label;
+                    img.src = previewUrl + '?t=' + Date.now() + (token ? '&ApiKey=' + token : ''); img.alt = b.label;
                     card.appendChild(img);
                     var lbl = document.createElement('div'); lbl.className = 'badge-label';
                     lbl.textContent = b.label + (isCustom ? ' (custom)' : ''); card.appendChild(lbl);
@@ -982,7 +982,7 @@
         });
 
         document.querySelector('#ExportConfig').addEventListener('click', function() {
-            window.location = ApiClient.getUrl('JellyTag/ExportConfig') + '?api_key=' + ApiClient.accessToken();
+            window.location = ApiClient.getUrl('JellyTag/ExportConfig') + '?ApiKey=' + ApiClient.accessToken();
         });
         document.querySelector('#ImportConfigBtn').addEventListener('click', function() { document.querySelector('#ImportConfigFile').click(); });
         document.querySelector('#ImportConfigFile').addEventListener('change', function() {
@@ -1025,7 +1025,7 @@
             function refreshPreview(){if(!previewItemId||refreshing)return;refreshing=true;errorEl.style.display='none';errorEl.textContent='';spinner.style.display='block';
                 ApiClient.getPluginConfiguration(JellyTagConfig.pluginUniqueId).then(function(config){collectConfigFromForm(config);return ApiClient.updatePluginConfiguration(JellyTagConfig.pluginUniqueId,config);}).then(function(){
                     return ApiClient.ajax({type:'POST',url:ApiClient.getUrl('JellyTag/ClearCache')});}).then(function(){
-                    var token=ApiClient.accessToken();var bust='_t='+Date.now();var tp=token?'&api_key='+token:'';
+                    var token=ApiClient.accessToken();var bust='_t='+Date.now();var tp=token?'&ApiKey='+token:'';
                     var pu=ApiClient.getUrl('Items/'+previewItemId+'/Images/Primary')+'?'+bust+tp;
                     var tu=ApiClient.getUrl('Items/'+previewItemId+'/Images/Thumb')+'?'+bust+tp;
                     var pl=new Promise(function(res){var img=new Image();img.onload=function(){posterImg.src=pu;posterImg.style.display='block';res();};img.onerror=function(){posterImg.style.display='none';res();};img.src=pu;});
