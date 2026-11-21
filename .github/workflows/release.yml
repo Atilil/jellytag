@@ -38,5 +38,5 @@ jobs:
           just package "$version"
           gh release create "$TAG" artifacts/*.zip \
             --draft \
-            --title "WatchSync $version" \
+            --title "JellyTag $version" \
             --notes-file artifacts/*.md
