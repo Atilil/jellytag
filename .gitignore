@@ -34,8 +34,11 @@ Thumbs.db
 # Cache
 **/cache/
 
-# Internal notes and reviews (development)
-AGENTS.md
-GEMINI.md
-CLAUDE.md
-*-review.md
+# direnv
+.direnv/
+
+# Local Jellyfin test instance
+.dev/
+
+# Release packages (just package)
+artifacts/

@@ -1,0 +1,20 @@
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directory: /Jellytag/Jellyfin.Plugin.JellyTag
+    schedule:
+      interval: weekly
+    groups:
+      jellyfin:
+        patterns:
+          - "Jellyfin.*"
+    ignore:
+      # Jellyfin ships its own SkiaSharp and Svg.Skia: the plugin must use the same
+      # versions, so they are bumped by hand together with the Jellyfin packages.
+      - dependency-name: "SkiaSharp*"
+      - dependency-name: "Svg.Skia"
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

@@ -1,5 +1,5 @@
 *Status: Active development is temporarily paused while I deepen my understanding of the codebase. The project is not abandoned.
-see [#17](https://github.com/Atilil/jellyfin-plugins/issues/17) for the full context.*
+see [#17](https://github.com/Atilil/jellytag/issues/17) for the full context.*
 
 # Jellyfin Plugins by Atilili
 
@@ -20,7 +20,7 @@ A collection of plugins for Jellyfin media server.
 ### WatchSync
 
 <p align="center">
-    <img src="WatchSync/Jellyfin.Plugin.WatchSync/WatchSync.png" />
+    <img src="https://raw.githubusercontent.com/Atilil/watchsync/main/Jellyfin.Plugin.WatchSync/WatchSync.png" />
 </p>
 
 Automatically synchronizes watch history between libraries of different qualities (4K/HD). When a movie is watched in 4K, the HD version is also marked as watched (and vice versa).
@@ -33,7 +33,7 @@ Automatically synchronizes watch history between libraries of different qualitie
 - Library and user exclusion
 - Full sync scheduled task
 
-[More details](WatchSync/README.md)
+[More details](https://github.com/Atilil/watchsync)
 
 ---
 
