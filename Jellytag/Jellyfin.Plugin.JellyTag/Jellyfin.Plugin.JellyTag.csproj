@@ -27,7 +27,9 @@
     <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="3.119.4">
       <ExcludeAssets>all</ExcludeAssets>
     </PackageReference>
-    <PackageReference Include="Svg.Skia" Version="3.4.1" />
+    <PackageReference Include="Svg.Skia" Version="3.7.0">
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
   </ItemGroup>
 
   <ItemGroup>
