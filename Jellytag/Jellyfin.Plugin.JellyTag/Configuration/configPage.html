@@ -224,9 +224,12 @@
                 showModeOptions: [{v:'Highest',l:'Highest only'},{v:'All',l:'All'}]
             },
             Runtime: {
-                title: 'Video Length (optional)',
-                badges: [{id:'Runtime',key:'runtime',label:'Show video length (e.g. 1h 52m)'}],
-                hasShowMode: false
+                title: 'Video Length',
+                badges: [{id:'Runtime',key:'runtime',label:'Video length (e.g. 1h 52m)'}],
+                hasShowMode: false,
+                // A single badge, enabled with the panel, and only drawn as text.
+                single: true,
+                textOnly: true
             }
         };
 
@@ -310,13 +313,17 @@
 
             // Badges
             h += '<div class="jellytag-grid">';
-            def.badges.forEach(function(b) { h += chk(k + b.id, b.label); });
+            if (!def.single) def.badges.forEach(function(b) { h += chk(k + b.id, b.label); });
             h += '</div>';
 
-            h += '<div class="jellytag-row">';
-            h += def.hasShowMode ? '<div id="' + k + 'ShowModeWrap">' + sel(k + 'ShowMode', 'Show', def.showModeOptions) + '</div>' : '<div></div>';
-            h += sel(k + 'Style', 'Badge Style', [{v:'Image',l:'Image'},{v:'Text',l:'Text'}]);
-            h += '</div>';
+            if (def.textOnly) {
+                h += '<input type="hidden" id="' + k + 'Style" value="Text" />';
+            } else {
+                h += '<div class="jellytag-row">';
+                h += def.hasShowMode ? '<div id="' + k + 'ShowModeWrap">' + sel(k + 'ShowMode', 'Show', def.showModeOptions) + '</div>' : '<div></div>';
+                h += sel(k + 'Style', 'Badge Style', [{v:'Image',l:'Image'},{v:'Text',l:'Text'}]);
+                h += '</div>';
+            }
             h += '<div class="jellytag-row">' + sel(k + 'Position', 'Position', POS_OPTS);
             h += '<div id="' + k + 'LayoutWrap">' + sel(k + 'Layout', 'Layout', LAYOUT_OPTS) + '</div></div>';
             h += chk(k + 'Inline', 'Join the previous panel\'s row', 'Places these badges next to the previous panel at the same position. That panel must use the Horizontal layout; has no effect on the first panel of a position.');
@@ -326,7 +333,7 @@
             // Customization of the checked badges only
             h += '<details class="jellytag-sub"><summary>Customize badges</summary><div class="jellytag-sub-body">';
             h += '<div class="fieldDescription">Custom images and texts are shared by posters and thumbnails.</div>';
-            h += '<div class="fieldDescription" id="' + k + 'CustomEmpty">Check a badge above to customize it.</div>';
+            if (!def.single) h += '<div class="fieldDescription" id="' + k + 'CustomEmpty">Check a badge above to customize it.</div>';
             // Image style: the badge images
             h += '<div id="' + k + 'CustomImages">';
             h += '<div class="fieldDescription">Click a badge to replace its image (SVG, PNG or JPEG), &times; restores the default.</div>';
@@ -802,7 +809,7 @@
             q(k + 'Gap').value = pc.GapPercent != null ? pc.GapPercent : 10;
             q(k + 'Size').value = pc.SizePercent != null ? pc.SizePercent : 15;
             q(k + 'Margin').value = pc.MarginPercent != null ? pc.MarginPercent : 2.5;
-            q(k + 'Style').value = pc.Style || 'Image';
+            q(k + 'Style').value = PANEL_DEFS[panelId].textOnly ? 'Text' : (pc.Style || 'Image');
 
             // Badges
             var en = pc.EnabledBadges || [];
@@ -907,7 +914,7 @@
             var badges = [];
             def.badges.forEach(function(b) {
                 var el = q(k + b.id);
-                if (el && el.checked) {
+                if (def.single || (el && el.checked)) {
                     if (b.key === 'channel') {
                         badges.push('7.1'); badges.push('5.1'); badges.push('stereo');
                     } else {
