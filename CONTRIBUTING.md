@@ -3,6 +3,16 @@
 Issues and pull requests are welcome. Every pull request is linted, built and
 tested by GitHub Actions.
 
+## Scope
+
+JellyTag shows what Jellyfin already knows about a media item: what it reads
+from the files (resolution, HDR, codecs, audio, languages) and the metadata it
+stores for every item (runtime, ratings...). Features that depend on a
+country-specific system, such as national age ratings, are out of scope: they
+would need one badge set and one parser per country.
+
+If you are unsure whether an idea fits, open an issue before writing code.
+
 ## Development environment
 
 The dev shell is provided by Nix (`nix develop`, or direnv with `use flake`).
