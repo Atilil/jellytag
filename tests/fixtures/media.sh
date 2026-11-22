@@ -6,7 +6,8 @@ set -euo pipefail
 media=$1/movies
 
 # A global LD_LIBRARY_PATH (alsa-lib from the host profile) breaks the flake ffmpeg.
-ff() { env -u LD_LIBRARY_PATH ffmpeg -loglevel error -y "$@"; }
+# A fixture never takes more than a few seconds: a stuck encode fails instead of hanging.
+ff() { timeout 120 env -u LD_LIBRARY_PATH ffmpeg -loglevel error -y "$@"; }
 
 movie() { # $1 title, $2 resolution, $3 audio layout, $4 audio language, [$5 version suffix], [$6 audio title], [$7 seconds]
     local dir="$media/$1 (2024)"
@@ -56,3 +57,20 @@ mkdir -p "$dir"
 [[ -f "$dir/poster.jpg" ]] || ff -f lavfi -i "testsrc2=size=1000x1500" -frames:v 1 "$dir/poster.jpg"
 printf '<?xml version="1.0" encoding="utf-8" standalone="yes"?>\n<movie>\n  <title>JT HDR 3D</title>\n  <year>2024</year>\n</movie>\n' \
     >"$dir/movie.nfo"
+# #6/#7: English audio, English and French subtitles.
+dir="$media/JT Subs (2024)"
+mkdir -p "$dir"
+if [[ ! -f "$dir/JT Subs (2024).mkv" ]]; then
+    srt=$(mktemp)
+    printf '1\n00:00:00,000 --> 00:00:01,000\nHello\n' >"$srt"
+    ff -f lavfi -i "testsrc=duration=2:size=1920x1080:rate=24" \
+        -f lavfi -i "anullsrc=channel_layout=stereo:sample_rate=48000" -f srt -i "$srt" \
+        -map 0:v -map 1:a -map 2 -map 2 -t 2 -c:v libx264 -pix_fmt yuv420p -c:a aac -c:s srt \
+        -metadata:s:a:0 language=eng \
+        -metadata:s:s:0 language=eng -metadata:s:s:1 language=fra \
+        "$dir/JT Subs (2024).mkv"
+    rm -f "$srt"
+fi
+[[ -f "$dir/poster.jpg" ]] || ff -f lavfi -i "testsrc2=size=1000x1500" -frames:v 1 "$dir/poster.jpg"
+printf '<?xml version="1.0" encoding="utf-8" standalone="yes"?>\n<movie>\n  <title>JT Subs</title>\n  <year>2024</year>\n</movie>\n' \
+    >"$dir/JT Subs (2024).nfo"

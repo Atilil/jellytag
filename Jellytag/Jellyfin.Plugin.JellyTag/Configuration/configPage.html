@@ -41,6 +41,9 @@
             .jellytag-custom-images { display: flex; flex-wrap: wrap; gap: 8px; margin: .6em 0; }
             .jellytag-custom-images > .badge-cards { display: contents; }
             .badge-cards { display: flex; flex-wrap: wrap; gap: 8px; }
+            .lang-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: -.5em 0 1em; }
+            .lang-chip { display: inline-flex; align-items: center; gap: .4em; padding: .2em .4em .2em .7em; border-radius: 1em; background: rgba(0,164,220,.25); font-size: .9em; }
+            .lang-chip button { background: none; border: none; color: inherit; cursor: pointer; font-size: 1.1em; line-height: 1; padding: 0 .2em; }
             .badge-cards .badge-card { padding: .3em .4em; }
             .badge-cards .badge-card img { width: 72px; height: 36px; }
             .jellytag-config-layout { display: block; margin-right: 350px; }
@@ -348,6 +351,41 @@
             return h;
         }
 
+        // Language filter of the language and subtitle panels (#6, #7).
+        function langFilterHTML(k) {
+            var h = '<div class="jellytag-row">';
+            h += sel(k + 'LangFilter', 'Languages', [{v:'All',l:'All languages'},{v:'Only',l:'Only these'},{v:'Except',l:'All except these'}]);
+            h += '<div id="' + k + 'LangCodesWrap">' + sel(k + 'LangAdd', 'Add a language', [{v:'',l:'Add a language\u2026'}]) + '</div>';
+            h += '</div>';
+            h += '<div id="' + k + 'LangChips" class="lang-chips"></div>';
+            h += chk(k + 'HideUnd', 'Hide undefined languages (und)');
+            return h;
+        }
+
+        function subPanelHTML(p) {
+            var k = p + 'Sub';
+            var h = '<details class="jellytag-sub" data-panel-id="Sub"><summary>Subtitle Badges' + arrowBtns() + '</summary><div class="jellytag-sub-body">';
+            h += chk(k + 'Enabled', 'Enable');
+            h += '<div id="' + k + 'Settings">';
+            h += '<div class="jellytag-row">';
+            h += sel(k + 'Scope', 'Show', [{v:'WithoutAudio',l:'Languages without matching audio'},{v:'All',l:'All subtitle languages'}]);
+            h += sel(k + 'Label', 'Label', [{v:'Code',l:'Language code (EN)'},{v:'CcCode',l:'CC + code (CC EN)'},{v:'Vost',l:'VOST (VOSTEN)'}]);
+            h += '</div>';
+            h += langFilterHTML(k);
+            h += '<div class="jellytag-row">' + sel(k + 'Position', 'Position', POS_OPTS);
+            h += sel(k + 'Layout', 'Layout', LAYOUT_OPTS) + '</div>';
+            h += '<div class="jellytag-row three">' + num(k + 'Gap', 'Gap (%)', 0, 50, 1);
+            h += num(k + 'Size', 'Size (%)', 0, 100, 1) + num(k + 'Margin', 'Margin (%)', 0, 20, 0.5) + '</div>';
+            h += '<div class="jellytag-text-box">';
+            h += colorAlpha(k + 'BgColor', k + 'BgOpacity', 'Background Color');
+            h += colorOnly(k + 'TextColor', 'Text Color');
+            h += num(k + 'CornerRadius', 'Corner Radius (%)', 0, 50, 1);
+            h += '</div>';
+            h += '</div>'; // Settings
+            h += '</div></details>';
+            return h;
+        }
+
         function langPanelHTML(p) {
             var k = p + 'Lang';
             var h = '<details class="jellytag-sub" data-panel-id="Lang"><summary>Language Badges' + arrowBtns() + '</summary><div class="jellytag-sub-body">';
@@ -359,19 +397,12 @@
             h += '<div id="' + k + 'LayoutWrap">' + sel(k + 'Layout', 'Layout', LAYOUT_OPTS) + '</div></div>';
             h += '<div class="jellytag-row three"><div id="' + k + 'GapWrap">' + num(k + 'Gap', 'Gap (%)', 0, 50, 1) + '</div>';
             h += num(k + 'Size', 'Size (%)', 0, 100, 1) + num(k + 'Margin', 'Margin (%)', 0, 20, 0.5) + '</div>';
+            h += langFilterHTML(k);
             h += '<div id="' + k + 'TextSettings" class="jellytag-text-box hidden">';
             h += colorAlpha(k + 'BgColor', k + 'BgOpacity', 'Background Color');
             h += colorOnly(k + 'TextColor', 'Text Color');
             h += num(k + 'CornerRadius', 'Corner Radius (%)', 0, 50, 1);
             h += '</div>';
-            // VOST
-            h += '<div style="margin-top:1em;">';
-            h += chk(k + 'Vost', 'Show VOST* indicator', 'Show VOST* badge for languages that have subtitles but no matching audio track.');
-            h += '<div id="' + k + 'VostSettings" class="jellytag-text-box hidden">';
-            h += colorAlpha(k + 'VostBgColor', k + 'VostBgOpacity', 'VOST Background Color');
-            h += colorOnly(k + 'VostTextColor', 'VOST Text Color');
-            h += num(k + 'VostCornerRadius', 'VOST Corner Radius (%)', 0, 50, 1);
-            h += '</div></div>';
             h += '<details class="jellytag-sub"><summary>Customize flags</summary><div class="jellytag-sub-body">';
             h += '<div class="fieldDescription">Flags follow the audio language code: replace the English flag with the US flag, for example. Shared by posters and thumbnails.</div>';
             h += '<div class="badge-cards flag-cards"></div>';
@@ -382,7 +413,7 @@
         }
 
         function generatePanels(prefix) {
-            return panelHTML(prefix, 'Res') + panelHTML(prefix, 'Hdr') + panelHTML(prefix, 'Codec') + panelHTML(prefix, 'Audio') + langPanelHTML(prefix) + panelHTML(prefix, 'Runtime');
+            return panelHTML(prefix, 'Res') + panelHTML(prefix, 'Hdr') + panelHTML(prefix, 'Codec') + panelHTML(prefix, 'Audio') + langPanelHTML(prefix) + subPanelHTML(prefix) + panelHTML(prefix, 'Runtime');
         }
 
         // ===== Panel reordering =====
@@ -586,13 +617,71 @@
             toggle();
         }
 
-        function setupVostToggle(prefix) {
-            var k = prefix + 'Lang';
-            var vostEl = document.querySelector('#' + k + 'Vost');
-            var vostDiv = document.querySelector('#' + k + 'VostSettings');
-            if (!vostEl || !vostDiv) return;
-            function toggle() { vostEl.checked ? vostDiv.classList.remove('hidden') : vostDiv.classList.add('hidden'); }
-            vostEl.addEventListener('change', toggle);
+        // ===== Language picker: names from Jellyfin's own list, codes stored =====
+        var cultures = [];          // [{name, codes:[...]}] sorted by name, from /Localization/Cultures
+        var langCodeStates = {};    // panel key -> selected codes
+
+        function loadCultures() {
+            var token = ApiClient.accessToken();
+            var headers = {}; if (token) headers['Authorization'] = 'MediaBrowser Token="' + token + '"';
+            return fetch(ApiClient.getUrl('Localization/Cultures'), {headers:headers}).then(function(r){return r.json();}).then(function(list) {
+                cultures = list
+                    .filter(function(c) { return c.ThreeLetterISOLanguageName; })
+                    .map(function(c) { return { name: c.DisplayName, code: c.ThreeLetterISOLanguageName, codes: c.ThreeLetterISOLanguageNames || [c.ThreeLetterISOLanguageName] }; })
+                    .sort(function(a, b) { return a.name.localeCompare(b.name); });
+                Object.keys(langCodeStates).forEach(renderLangPicker);
+            }).catch(function(err) { console.error('[JellyTag] Failed to load languages:', err); });
+        }
+
+        function cultureOf(code) {
+            for (var i = 0; i < cultures.length; i++) {
+                if (cultures[i].codes.indexOf(code) >= 0) return cultures[i];
+            }
+            return null;
+        }
+
+        function renderLangPicker(key) {
+            var codes = langCodeStates[key] || [];
+            var chips = document.querySelector('#' + key + 'LangChips');
+            var addEl = document.querySelector('#' + key + 'LangAdd');
+            if (!chips || !addEl) return;
+            chips.innerHTML = '';
+            codes.forEach(function(code) {
+                var c = cultureOf(code);
+                var chip = document.createElement('span'); chip.className = 'lang-chip';
+                chip.appendChild(document.createTextNode(c ? c.name : code));
+                var rm = document.createElement('button'); rm.type = 'button'; rm.title = 'Remove'; rm.textContent = '\u00D7';
+                rm.addEventListener('click', function() {
+                    langCodeStates[key] = codes.filter(function(x) { return x !== code; });
+                    renderLangPicker(key);
+                    addEl.dispatchEvent(new Event('change', { bubbles: true }));  // live preview
+                });
+                chip.appendChild(rm); chips.appendChild(chip);
+            });
+            addEl.innerHTML = '<option value="">Add a language\u2026</option>';
+            cultures.forEach(function(c) {
+                var taken = codes.some(function(x) { return c.codes.indexOf(x) >= 0; });
+                if (!taken) addEl.insertAdjacentHTML('beforeend', '<option value="' + c.code + '">' + c.name + '</option>');
+            });
+        }
+
+        function setupLangFilterToggle(key) {
+            var modeEl = document.querySelector('#' + key + 'LangFilter');
+            var codesWrap = document.querySelector('#' + key + 'LangCodesWrap');
+            var chips = document.querySelector('#' + key + 'LangChips');
+            var addEl = document.querySelector('#' + key + 'LangAdd');
+            if (!modeEl || !codesWrap) return;
+            function toggle() {
+                var all = modeEl.value === 'All';
+                codesWrap.classList.toggle('hidden', all);
+                if (chips) chips.classList.toggle('hidden', all);
+            }
+            modeEl.addEventListener('change', toggle);
+            if (addEl) addEl.addEventListener('change', function() {
+                if (!addEl.value) return;
+                (langCodeStates[key] = langCodeStates[key] || []).push(addEl.value);
+                renderLangPicker(key);
+            });
             toggle();
         }
 
@@ -677,7 +766,9 @@
             setupEnableToggle(prefix + 'Lang');
             setupStyleToggle(prefix + 'Lang');
             setupLangShowModeToggle(prefix);
-            setupVostToggle(prefix);
+            setupLangFilterToggle(prefix + 'Lang');
+            setupEnableToggle(prefix + 'Sub');
+            setupLangFilterToggle(prefix + 'Sub');
             setupHdrCodecShowMode(prefix);
             setupThumbShowHideLayout(prefix);
         }
@@ -739,12 +830,32 @@
             q(k + 'BgOpacity').value = lc.TextBgOpacity != null ? lc.TextBgOpacity : 180;
             q(k + 'TextColor').value = lc.TextColor || '#FFFFFF';
             q(k + 'CornerRadius').value = lc.TextCornerRadius != null ? lc.TextCornerRadius : 25;
-            // VOST
-            q(k + 'Vost').checked = itc.ShowVostIndicator !== false;
-            q(k + 'VostBgColor').value = itc.VostBgColor || '#000000';
-            q(k + 'VostBgOpacity').value = itc.VostBgOpacity != null ? itc.VostBgOpacity : 0;
-            q(k + 'VostTextColor').value = itc.VostTextColor || '#FFFFFF';
-            q(k + 'VostCornerRadius').value = itc.VostCornerRadius != null ? itc.VostCornerRadius : 1;
+            loadLangFilter(k, lc);
+        }
+
+        function loadLangFilter(k, pc) {
+            q(k + 'LangFilter').value = pc.LanguageFilter || 'All';
+            langCodeStates[k] = (pc.LanguageCodes || []).slice();
+            renderLangPicker(k);
+            q(k + 'HideUnd').checked = pc.HideUndefinedLanguage !== false;
+        }
+
+        function loadSubConfig(prefix, sc) {
+            if (!sc) return;
+            var k = prefix + 'Sub';
+            q(k + 'Enabled').checked = sc.Enabled !== false;
+            q(k + 'Scope').value = sc.SubtitlesWithoutAudioOnly === false ? 'All' : 'WithoutAudio';
+            q(k + 'Label').value = sc.SubtitleLabel || 'Code';
+            q(k + 'Position').value = sc.Position || 'TopLeft';
+            q(k + 'Layout').value = sc.Layout || 'Vertical';
+            q(k + 'Gap').value = sc.GapPercent != null ? sc.GapPercent : 10;
+            q(k + 'Size').value = sc.SizePercent != null ? sc.SizePercent : 15;
+            q(k + 'Margin').value = sc.MarginPercent != null ? sc.MarginPercent : 2.5;
+            q(k + 'BgColor').value = sc.TextBgColor || '#000000';
+            q(k + 'BgOpacity').value = sc.TextBgOpacity != null ? sc.TextBgOpacity : 255;
+            q(k + 'TextColor').value = sc.TextColor || '#FFFFFF';
+            q(k + 'CornerRadius').value = sc.TextCornerRadius != null ? sc.TextCornerRadius : 10;
+            loadLangFilter(k, sc);
         }
 
         function loadImageTypeConfig(prefix, itc) {
@@ -756,6 +867,7 @@
             loadPanelConfig(prefix, 'Audio', itc.AudioPanel);
             loadPanelConfig(prefix, 'Runtime', itc.RuntimePanel);
             loadLangConfig(prefix, itc.LanguagePanel, itc);
+            loadSubConfig(prefix, itc.SubtitlePanel);
             // Sort panels by Order
             var orderMap = {
                 Res: (itc.ResolutionPanel || {}).Order || 0,
@@ -763,6 +875,7 @@
                 Codec: (itc.CodecPanel || {}).Order || 0,
                 Audio: (itc.AudioPanel || {}).Order || 0,
                 Lang: (itc.LanguagePanel || {}).Order || 0,
+                Sub: (itc.SubtitlePanel || {}).Order || 0,
                 Runtime: (itc.RuntimePanel || {}).Order || 5
             };
             var container = document.getElementById(prefix + 'Panels');
@@ -828,14 +941,43 @@
                 TextColor: q(k + 'TextColor').value,
                 TextCornerRadius: parseInt(q(k + 'CornerRadius').value, 10) || 0,
                 EnabledBadges: [],
-                BadgeTypeOverrides: []
+                BadgeTypeOverrides: [],
+                LanguageFilter: q(k + 'LangFilter').value,
+                LanguageCodes: (langCodeStates[k] || []).slice(),
+                HideUndefinedLanguage: q(k + 'HideUnd').checked
+            };
+        }
+
+        function collectSubConfig(prefix, order) {
+            var k = prefix + 'Sub';
+            return {
+                Enabled: q(k + 'Enabled').checked,
+                Position: q(k + 'Position').value,
+                ShowMode: 'All',
+                Layout: q(k + 'Layout').value,
+                GapPercent: parseFloat(q(k + 'Gap').value) || 0,
+                SizePercent: parseInt(q(k + 'Size').value, 10) || 15,
+                MarginPercent: parseFloat(q(k + 'Margin').value) || 2.5,
+                Style: 'Text',
+                Order: order,
+                TextBgColor: q(k + 'BgColor').value,
+                TextBgOpacity: parseInt(q(k + 'BgOpacity').value, 10) || 0,
+                TextColor: q(k + 'TextColor').value,
+                TextCornerRadius: parseInt(q(k + 'CornerRadius').value, 10) || 0,
+                EnabledBadges: [],
+                BadgeTypeOverrides: [],
+                LanguageFilter: q(k + 'LangFilter').value,
+                LanguageCodes: (langCodeStates[k] || []).slice(),
+                HideUndefinedLanguage: q(k + 'HideUnd').checked,
+                SubtitlesWithoutAudioOnly: q(k + 'Scope').value === 'WithoutAudio',
+                SubtitleLabel: q(k + 'Label').value
             };
         }
 
         function collectImageTypeConfig(prefix) {
             var k = prefix + 'Lang';
             var container = document.getElementById(prefix + 'Panels');
-            var order = container ? getPanelOrder(container) : {Res:0,Hdr:1,Codec:2,Audio:3,Lang:4,Runtime:5};
+            var order = container ? getPanelOrder(container) : {Res:0,Hdr:1,Codec:2,Audio:3,Lang:4,Sub:5,Runtime:6};
             return {
                 Enabled: q(prefix + 'Enabled').checked,
                 ResolutionPanel: collectPanelConfig(prefix, 'Res', order.Res || 0),
@@ -843,12 +985,8 @@
                 CodecPanel: collectPanelConfig(prefix, 'Codec', order.Codec || 0),
                 AudioPanel: collectPanelConfig(prefix, 'Audio', order.Audio || 0),
                 LanguagePanel: collectLangConfig(prefix),
-                RuntimePanel: collectPanelConfig(prefix, 'Runtime', order.Runtime != null ? order.Runtime : 5),
-                ShowVostIndicator: q(k + 'Vost').checked,
-                VostBgColor: q(k + 'VostBgColor').value || null,
-                VostTextColor: q(k + 'VostTextColor').value || null,
-                VostBgOpacity: parseInt(q(k + 'VostBgOpacity').value, 10) || 0,
-                VostCornerRadius: parseInt(q(k + 'VostCornerRadius').value, 10) || 0
+                SubtitlePanel: collectSubConfig(prefix, order.Sub != null ? order.Sub : 5),
+                RuntimePanel: collectPanelConfig(prefix, 'Runtime', order.Runtime != null ? order.Runtime : 6)
             };
         }
 
@@ -1041,6 +1179,7 @@
             });
 
             loadBadgeGallery();
+            loadCultures();
             loadCacheStats();
             toggleOutputQuality();
 

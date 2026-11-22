@@ -233,6 +233,7 @@ public class ImageCacheService : IImageCacheService
         AppendPanelFingerprint(sb, c.AudioPanel);
         AppendPanelFingerprint(sb, c.LanguagePanel);
         AppendPanelFingerprint(sb, c.RuntimePanel);
+        if (c.SubtitlePanel != null) AppendPanelFingerprint(sb, c.SubtitlePanel);
         sb.Append(c.ShowVostIndicator).Append(c.VostBgColor ?? "n").Append(c.VostTextColor ?? "n");
         sb.Append(c.VostBgOpacity).Append(c.VostCornerRadius).Append('|');
     }
@@ -244,6 +245,8 @@ public class ImageCacheService : IImageCacheService
         sb.Append((int)p.Style).Append(p.Order);
         sb.Append(p.TextBgColor).Append(p.TextBgOpacity).Append(p.TextColor).Append(p.TextCornerRadius);
         sb.Append(string.Join(",", p.EnabledBadges));
+        sb.Append((int)p.LanguageFilter).Append(string.Join(",", p.LanguageCodes)).Append(p.HideUndefinedLanguage);
+        sb.Append(p.SubtitlesWithoutAudioOnly).Append((int)p.SubtitleLabel);
         if (p.BadgeTypeOverrides != null)
         {
             foreach (var o in p.BadgeTypeOverrides)

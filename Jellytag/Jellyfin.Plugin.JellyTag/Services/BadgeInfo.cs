@@ -70,4 +70,9 @@ public class BadgeInfo
     /// Gets or sets literal text to render for dynamic badges (e.g. "1h 52m"). Takes precedence over key-based text.
     /// </summary>
     public string? DisplayText { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether a subtitle badge's language also has an audio track.
+    /// </summary>
+    public bool HasMatchingAudio { get; set; }
 }

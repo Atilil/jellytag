@@ -245,13 +245,15 @@ public class QualityDetectionService : IQualityDetectionService
                 });
             }
 
-            // A subtitle-only language (VOST) is redundant if another version has it as audio.
-            var audioLanguages = new HashSet<string>(
-                merged.Where(b => b.Category == BadgeCategory.Language).Select(b => b.BadgeKey),
-                StringComparer.OrdinalIgnoreCase);
-            merged.RemoveAll(b => b.Category == BadgeCategory.Subtitle
-                && b.BadgeKey.Length > 4
-                && audioLanguages.Contains(b.BadgeKey.Substring(4)));
+            // A subtitle language may have its audio in another version of the item.
+            var audioLanguages = merged
+                .Where(b => b.Category == BadgeCategory.Language)
+                .Select(b => NormalizeLanguage(b.BadgeKey))
+                .ToHashSet();
+            foreach (var sub in merged.Where(b => b.Category == BadgeCategory.Subtitle))
+            {
+                sub.HasMatchingAudio |= audioLanguages.Contains(SubtitleLanguage(sub.BadgeKey));
+            }
 
             // Order best-first so the "Highest" display mode keeps the best badge across versions.
             // OrderBy is stable, so languages keep the order of the primary version first.
@@ -380,6 +382,25 @@ public class QualityDetectionService : IQualityDetectionService
         { "vq", "can" }
     };
 
+    /// <summary>
+    /// Brings a language code to the form flags use: "fre" -> "fra", French variants -> "fra".
+    /// </summary>
+    internal static string NormalizeLanguage(string code)
+    {
+        var lower = code.Trim().ToLowerInvariant();
+        if (FrenchVariantFlags.ContainsKey(lower))
+        {
+            return "fra";
+        }
+
+        return LangCodeToFlag.TryGetValue(lower, out var mapped) ? mapped : lower;
+    }
+
+    /// <summary>
+    /// Language of a subtitle badge: "subfra" -> "fra".
+    /// </summary>
+    internal static string SubtitleLanguage(string badgeKey) => badgeKey["sub".Length..];
+
     private static string GetFlagResourceFileName(string langCode)
     {
         if (FrenchVariantFlags.TryGetValue(langCode, out var variantFlag))
@@ -439,28 +460,26 @@ public class QualityDetectionService : IQualityDetectionService
             }
         }
 
-        // VOST indicators - always detect, filtering happens in ShouldShowBadge
-        var audioLanguages = new HashSet<string>(
-            audioStreams.Where(s => !string.IsNullOrEmpty(s.Language)).Select(s => s.Language!.ToLowerInvariant()),
-            StringComparer.OrdinalIgnoreCase);
+        // Every subtitle language, alphabetically; the subtitle panel decides which to show.
+        var audioLanguages = audioStreams
+            .Where(s => !string.IsNullOrEmpty(s.Language))
+            .Select(s => NormalizeLanguage(s.Language!))
+            .ToHashSet();
 
-        var subtitleStreams = allStreams.Where(s => s.Type == MediaStreamType.Subtitle).ToList();
-        foreach (var sub in subtitleStreams)
+        var subtitleLanguages = allStreams
+            .Where(s => s.Type == MediaStreamType.Subtitle && !string.IsNullOrEmpty(s.Language))
+            .Select(s => NormalizeLanguage(s.Language!))
+            .Distinct()
+            .Order(StringComparer.Ordinal);
+        foreach (var subLang in subtitleLanguages)
         {
-            var subLang = sub.Language?.ToLowerInvariant();
-            if (!string.IsNullOrEmpty(subLang) && !audioLanguages.Contains(subLang))
+            badges.Add(new BadgeInfo
             {
-                var key = "vost" + subLang;
-                if (addedLanguages.Add(key))
-                {
-                    badges.Add(new BadgeInfo
-                    {
-                        Category = BadgeCategory.Subtitle,
-                        BadgeKey = key,
-                        ResourceFileName = string.Empty
-                    });
-                }
-            }
+                Category = BadgeCategory.Subtitle,
+                BadgeKey = "sub" + subLang,
+                ResourceFileName = string.Empty,
+                HasMatchingAudio = audioLanguages.Contains(subLang)
+            });
         }
 
         return badges;

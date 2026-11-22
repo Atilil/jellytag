@@ -440,6 +440,7 @@ public partial class JellyTagController : ControllerBase
                 return BadRequest("Invalid configuration file");
             }
 
+            imported.EnsureSubtitlePanels();
             plugin.UpdateConfiguration(imported);
             _cacheService.ClearCache();
             _qualityService.ClearBadgeCache();

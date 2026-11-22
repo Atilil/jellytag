@@ -92,7 +92,7 @@ api POST "/Library/VirtualFolders?name=movies&collectionType=movies&paths=/media
 api POST /Library/Refresh
 
 scan_done() {
-    [[ $(api GET "/Items?Recursive=true&IncludeItemTypes=Movie" | jq .TotalRecordCount) == 11 ]] &&
+    [[ $(api GET "/Items?Recursive=true&IncludeItemTypes=Movie" | jq .TotalRecordCount) == 12 ]] &&
         api GET /ScheduledTasks | jq -e '.[] | select(.Key == "RefreshLibrary") | .State == "Idle"'
 }
 wait_for 180 "the library scan" scan_done
@@ -123,6 +123,8 @@ declare -A expected=(
     ["JT Multi"]=4k_1080p_h264_5.1_stereo_eng_fra
     ["JT Default"]=1080p_h264_stereo_deu_eng_jpn
     ["JT HDR 3D"]=1080p_hevc_hdr10_3d_stereo_eng
+    # English subtitles hidden: the English audio is there.
+    ["JT Subs"]=1080p_h264_stereo_eng_subfra
 )
 declare -A rendered
 for title in "${!expected[@]}"; do
@@ -140,7 +142,7 @@ check "JT Default: default audio language first" jpn_deu_eng "$(languages "JT De
 
 title="JT 4K"
 id=$(item "$title")
-check "cache: one rendered image per poster" 11 "$(api GET /JellyTag/CacheStats | jq .FileCount)"
+check "cache: one rendered image per poster" 12 "$(api GET /JellyTag/CacheStats | jq .FileCount)"
 check "cache: same image on the next request" "${rendered[$title]}" "$(served "$id")"
 
 plugin=$(api GET /Plugins | jq -r '.[] | select(.Name == "JellyTag") | .Id')
@@ -161,6 +163,19 @@ title="JT HDR 3D"
 check "hdr panel all: second badge drawn" true "$([[ $(served "$(item "$title")") != "${rendered[$title]}" ]] && echo true || echo false)"
 title="JT 1080p"
 check "hdr panel all: poster without HDR unchanged" "${rendered[$title]}" "$(served "$(item "$title")")"
+
+# --- Language filters (#6) and subtitle panel (#7)
+
+config() { api POST "/Plugins/$plugin/Configuration" "$(api GET "/Plugins/$plugin/Configuration" | jq -c "$1")"; }
+title="JT Subs"
+id=$(item "$title")
+config '.PosterConfig.LanguagePanel.LanguageFilter = "Except" | .PosterConfig.LanguagePanel.LanguageCodes = ["eng"]'
+served "$id" >/dev/null
+check "language filter: English audio hidden" "$(sorted <<<1080p_h264_stereo_subfra)" "$(badges "$title")"
+config '.PosterConfig.SubtitlePanel.SubtitlesWithoutAudioOnly = false'
+served "$id" >/dev/null
+check "subtitle panel: all subtitle languages" "$(sorted <<<1080p_h264_stereo_subeng_subfra)" "$(badges "$title")"
+config '.PosterConfig.LanguagePanel.LanguageFilter = "All" | .PosterConfig.SubtitlePanel.SubtitlesWithoutAudioOnly = true'
 
 # --- Custom flag: an uploaded flag-eng replaces the English flag, deleting it restores the default
 

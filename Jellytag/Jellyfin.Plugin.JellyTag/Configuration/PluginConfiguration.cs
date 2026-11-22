@@ -43,6 +43,23 @@ public enum OutputImageFormat
 /// <summary>
 /// Badge layout direction for stacking multiple badges.
 /// </summary>
+public enum LanguageFilterMode
+{
+    All,
+    Only,
+    Except
+}
+
+/// <summary>
+/// How a subtitle language is written: "EN", "CC EN" or "VOSTEN".
+/// </summary>
+public enum SubtitleLabel
+{
+    Code,
+    CcCode,
+    Vost
+}
+
 public enum BadgeLayout
 {
     Horizontal,
@@ -87,6 +104,15 @@ public class BadgePanelSettings
 
     // Badges enabled in this panel (e.g. ["4k","1080p","720p","sd"])
     public List<string> EnabledBadges { get; set; } = new();
+
+    // Language and subtitle panels: which languages to show (ISO 639-2 codes, e.g. "eng").
+    public LanguageFilterMode LanguageFilter { get; set; } = LanguageFilterMode.All;
+    public List<string> LanguageCodes { get; set; } = new();
+    public bool HideUndefinedLanguage { get; set; } = true;
+
+    // Subtitle panel only
+    public bool SubtitlesWithoutAudioOnly { get; set; } = true;
+    public SubtitleLabel SubtitleLabel { get; set; } = SubtitleLabel.Code;
 }
 
 /// <summary>
@@ -112,7 +138,20 @@ public class ImageTypeConfig
         EnabledBadges = new List<string> { "runtime" }
     };
 
-    // VOST settings (attached to Language panel)
+    // Null in configurations saved before 3.2.0: filled from the VOST settings below by
+    // PluginConfiguration.EnsureSubtitlePanels.
+    public BadgePanelSettings? SubtitlePanel { get; set; }
+
+    public static BadgePanelSettings CreateDefaultSubtitlePanel(int sizePercent, float marginPercent, int cornerRadius) => new()
+    {
+        Enabled = true, Order = 4, Position = BadgePosition.TopLeft,
+        Layout = BadgeLayout.Vertical, SizePercent = sizePercent, MarginPercent = marginPercent, GapPercent = 10f,
+        ShowMode = BadgeDisplayMode.All, Style = BadgeStyle.Text,
+        TextBgColor = "#000000", TextBgOpacity = 255, TextColor = "#FFFFFF", TextCornerRadius = cornerRadius
+    };
+
+    // Before 3.2.0, subtitle-only languages were drawn in the language panel ("VOST" settings).
+    // Kept to migrate older configurations.
     public bool ShowVostIndicator { get; set; } = true;
     public string? VostBgColor { get; set; }
     public string? VostTextColor { get; set; }
@@ -193,6 +232,33 @@ public class PluginConfiguration : BasePluginConfiguration
     public bool? ShowChannelBadge { get; set; }
     public LanguageBadgeMode? LanguageBadgeMode { get; set; }
     public bool? ShowSubtitleIndicator { get; set; }
+
+    /// <summary>
+    /// Gives configurations saved before 3.2.0 a subtitle panel that looks like their VOST
+    /// indicator did: same colors, same corner as the language panel, "VOSTEN" labels.
+    /// </summary>
+    public void EnsureSubtitlePanels()
+    {
+        foreach (var c in new[] { PosterConfig, ThumbnailConfig })
+        {
+            if (c == null || c.SubtitlePanel != null)
+            {
+                continue;
+            }
+
+            var lang = c.LanguagePanel;
+            c.SubtitlePanel = ImageTypeConfig.CreateDefaultSubtitlePanel(lang.SizePercent, lang.MarginPercent, c.VostCornerRadius);
+            c.SubtitlePanel.Enabled = c.ShowVostIndicator;
+            c.SubtitlePanel.Order = lang.Order;
+            c.SubtitlePanel.Position = lang.Position;
+            c.SubtitlePanel.Layout = lang.Layout;
+            c.SubtitlePanel.GapPercent = lang.GapPercent;
+            c.SubtitlePanel.SubtitleLabel = SubtitleLabel.Vost;
+            if (!string.IsNullOrEmpty(c.VostBgColor)) c.SubtitlePanel.TextBgColor = c.VostBgColor;
+            if (!string.IsNullOrEmpty(c.VostTextColor)) c.SubtitlePanel.TextColor = c.VostTextColor;
+            if (c.VostBgOpacity > 0) c.SubtitlePanel.TextBgOpacity = c.VostBgOpacity;
+        }
+    }
 
     /// <summary>
     /// Migrates legacy config format to the new per-panel format.
@@ -393,11 +459,7 @@ public class PluginConfiguration : BasePluginConfiguration
             EnabledBadges = new List<string>()
         };
 
-        config.ShowVostIndicator = true;
-        config.VostBgColor = "#000000";
-        config.VostTextColor = "#ffffff";
-        config.VostBgOpacity = 255;
-        config.VostCornerRadius = 10;
+        config.SubtitlePanel = ImageTypeConfig.CreateDefaultSubtitlePanel(15, 2f, 10);
 
         return config;
     }
@@ -441,9 +503,7 @@ public class PluginConfiguration : BasePluginConfiguration
 
         config.RuntimePanel = ImageTypeConfig.CreateDefaultRuntimePanel(10);
 
-        config.ShowVostIndicator = true;
-        config.VostBgOpacity = 255;
-        config.VostCornerRadius = 1;
+        config.SubtitlePanel = ImageTypeConfig.CreateDefaultSubtitlePanel(10, 2.5f, 1);
 
         return config;
     }

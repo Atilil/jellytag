@@ -40,6 +40,7 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
 
         // Run legacy migration once at startup
         Configuration.MigrateFromLegacy();
+        Configuration.EnsureSubtitlePanels();
     }
 
     /// <inheritdoc />

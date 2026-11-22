@@ -77,7 +77,8 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
             BadgeCategory.Hdr or BadgeCategory.ThreeD => imageConfig.HdrPanel,
             BadgeCategory.VideoCodec => imageConfig.CodecPanel,
             BadgeCategory.Audio => imageConfig.AudioPanel,
-            BadgeCategory.Language or BadgeCategory.Subtitle => imageConfig.LanguagePanel,
+            BadgeCategory.Language => imageConfig.LanguagePanel,
+            BadgeCategory.Subtitle => imageConfig.SubtitlePanel ?? imageConfig.LanguagePanel,
             BadgeCategory.Runtime => imageConfig.RuntimePanel,
             _ => imageConfig.ResolutionPanel
         };
@@ -98,16 +99,16 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
             return false;
         }
 
-        // For language/subtitle badges, EnabledBadges is empty = show all (language codes are dynamic)
-        if (badge.Category is BadgeCategory.Language or BadgeCategory.Subtitle)
+        // Language codes are dynamic: these panels filter by language, not by EnabledBadges.
+        if (badge.Category == BadgeCategory.Language)
         {
-            // Subtitle badges depend on ShowVostIndicator
-            if (badge.Category == BadgeCategory.Subtitle && !imageConfig.ShowVostIndicator)
-            {
-                return false;
-            }
+            return IsLanguageShown(badge.BadgeKey, panel);
+        }
 
-            return true;
+        if (badge.Category == BadgeCategory.Subtitle)
+        {
+            return !(panel.SubtitlesWithoutAudioOnly && badge.HasMatchingAudio)
+                && IsLanguageShown(QualityDetectionService.SubtitleLanguage(badge.BadgeKey), panel);
         }
 
         // For other categories, check EnabledBadges list
@@ -117,6 +118,41 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
         }
 
         return panel.EnabledBadges.Contains(badge.BadgeKey, StringComparer.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Applies a language or subtitle panel's filter: undefined ("und") tracks, then the
+    /// "only these" / "all except these" list. Codes are compared normalized (fre = fra).
+    /// </summary>
+    internal static bool IsLanguageShown(string languageKey, BadgePanelSettings panel)
+    {
+        var lang = QualityDetectionService.NormalizeLanguage(languageKey);
+        if (lang == "und" && panel.HideUndefinedLanguage)
+        {
+            return false;
+        }
+
+        if (panel.LanguageFilter == LanguageFilterMode.All)
+        {
+            return true;
+        }
+
+        var listed = panel.LanguageCodes.Any(code => QualityDetectionService.NormalizeLanguage(code) == lang);
+        return panel.LanguageFilter == LanguageFilterMode.Only ? listed : !listed;
+    }
+
+    /// <summary>
+    /// Text of a subtitle badge: "EN", "CC EN" or "VOSTEN".
+    /// </summary>
+    internal static string FormatSubtitleLabel(string language, SubtitleLabel label)
+    {
+        var code = BadgeDisplayText.TryGetValue(language, out var shortCode) ? shortCode : language.ToUpperInvariant();
+        return label switch
+        {
+            SubtitleLabel.CcCode => "CC " + code,
+            SubtitleLabel.Vost => BadgeDisplayText.TryGetValue("vost" + language, out var vost) ? vost : "VOST" + code,
+            _ => code
+        };
     }
 
     /// <inheritdoc />
@@ -154,6 +190,17 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
 
                 var panelBadges = badges.Where(b => GetPanelForCategory(b.Category, imageConfig) == panel).ToList();
                 if (panelBadges.Count == 0) continue;
+
+                // Subtitle labels depend on the panel: copies, the detected badges are shared.
+                panelBadges = panelBadges
+                    .Select(b => b.Category == BadgeCategory.Subtitle
+                        ? new BadgeInfo
+                        {
+                            Category = b.Category, BadgeKey = b.BadgeKey, ResourceFileName = string.Empty,
+                            DisplayText = FormatSubtitleLabel(QualityDetectionService.SubtitleLanguage(b.BadgeKey), panel.SubtitleLabel)
+                        }
+                        : b)
+                    .ToList();
 
                 // Apply ShowMode filter: Highest = keep only the first (highest priority) badge
                 if (panel.ShowMode == BadgeDisplayMode.Highest && panelBadges.Count > 1)
@@ -280,8 +327,14 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
             (imageConfig.LanguagePanel, "Language"),
             (imageConfig.RuntimePanel, "Runtime")
         };
-        panels.Sort((a, b) => a.Panel.Order.CompareTo(b.Panel.Order));
-        return panels;
+        if (imageConfig.SubtitlePanel != null)
+        {
+            // Right after the language panel: migrated configurations give both the same order.
+            panels.Insert(5, (imageConfig.SubtitlePanel, "Subtitle"));
+        }
+
+        // OrderBy is stable, unlike List.Sort: panels with the same order keep the list order.
+        return panels.OrderBy(p => p.Panel.Order).ToList();
     }
 
     private static int GroupVerticalExtent(List<SKSizeI> sizes, int gap, BadgeLayout layout)
@@ -806,15 +859,6 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
         var textColor = panel.TextColor ?? "#FFFFFF";
         var opacity = (byte)Math.Clamp(panel.TextBgOpacity, 0, 255);
         var cornerRadius = Math.Clamp(panel.TextCornerRadius, 0, 50);
-
-        // VOST override for subtitle badges
-        if (badge.Category == BadgeCategory.Subtitle)
-        {
-            if (!string.IsNullOrEmpty(imageConfig.VostBgColor)) bgColor = imageConfig.VostBgColor;
-            if (!string.IsNullOrEmpty(imageConfig.VostTextColor)) textColor = imageConfig.VostTextColor;
-            if (imageConfig.VostBgOpacity > 0) opacity = (byte)Math.Clamp(imageConfig.VostBgOpacity, 0, 255);
-            if (imageConfig.VostCornerRadius >= 0) cornerRadius = Math.Clamp(imageConfig.VostCornerRadius, 0, 50);
-        }
 
         // Per-badge-type overrides
         var typeOverride = panel.BadgeTypeOverrides?.FirstOrDefault(o => string.Equals(o.BadgeKey, badge.BadgeKey, StringComparison.OrdinalIgnoreCase));

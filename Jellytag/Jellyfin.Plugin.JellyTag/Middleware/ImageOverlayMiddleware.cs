@@ -215,6 +215,7 @@ public partial class ImageOverlayMiddleware
             AudioPanel = ClonePanelWithReduction(source.AudioPanel, reduction),
             LanguagePanel = ClonePanelWithReduction(source.LanguagePanel, reduction),
             RuntimePanel = ClonePanelWithReduction(source.RuntimePanel, reduction),
+            SubtitlePanel = source.SubtitlePanel == null ? null : ClonePanelWithReduction(source.SubtitlePanel, reduction),
             ShowVostIndicator = source.ShowVostIndicator,
             VostBgColor = source.VostBgColor,
             VostTextColor = source.VostTextColor,
@@ -242,7 +243,12 @@ public partial class ImageOverlayMiddleware
             TextColor = panel.TextColor,
             TextCornerRadius = panel.TextCornerRadius,
             BadgeTypeOverrides = new List<BadgeTypeStyleOverride>(panel.BadgeTypeOverrides),
-            EnabledBadges = new List<string>(panel.EnabledBadges)
+            EnabledBadges = new List<string>(panel.EnabledBadges),
+            LanguageFilter = panel.LanguageFilter,
+            LanguageCodes = new List<string>(panel.LanguageCodes),
+            HideUndefinedLanguage = panel.HideUndefinedLanguage,
+            SubtitlesWithoutAudioOnly = panel.SubtitlesWithoutAudioOnly,
+            SubtitleLabel = panel.SubtitleLabel
         };
     }
 }
