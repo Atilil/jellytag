@@ -34,13 +34,16 @@ configuration.
 ## Features
 
 - **Multi-category badges**: resolution, HDR and Dolby Vision, video codec,
-  audio, language flags and VOST indicator.
+  audio, language flags and subtitles.
 - **All clients**: badges are drawn on the server, not in the client.
 - **Optional video length badge** (e.g. `1h 52m`) on movies and episodes,
   disabled by default.
+- **Optional rating badges**: the community (TMDB or IMDb) and critic (Rotten
+  Tomatoes) ratings already stored by Jellyfin, disabled by default.
 - **Per image type**: independent settings for posters and thumbnails.
-- **Per category panels**: position, layout, order, size, colors, and "highest
-  only" or "all" display mode.
+- **Per category panels**: six positions (corners, top and bottom center),
+  layout, order, size, colors, "highest only" or "all" display mode; panels at
+  the same position can share a row.
 - **SVG or text badges**, with customizable colors, opacity and corner radius.
 - **Custom badges**: replace any default badge with your own SVG, PNG or JPEG.
 - **Live preview** in the configuration page.
@@ -65,16 +68,18 @@ The settings are on the plugin page in the Jellyfin dashboard:
   cache duration, excluded libraries.
 - **Posters and thumbnails**: each image type has its own panels; thumbnails
   can mirror the poster settings with a size reduction.
-- **Panels** (resolution, HDR, codec, audio, language): enabled, corner,
-  horizontal or vertical layout, image or text style, size, margin and gap (as
-  a percentage of the image), display mode, order, text colors.
+- **Panels** (resolution, HDR, codec, audio, language, subtitles, video length,
+  rating): enabled, position, horizontal or vertical layout, same row as the
+  previous panel, image or text style, size, margin and gap (as a percentage of
+  the image), display mode, order, text colors.
+- **Episodes** use the thumbnail settings and can be left without badges.
 
 ## Custom badges
 
 Any default badge can be replaced by your own image, or by a custom text for
 text-style badges:
 
-- in the **Custom Badges** section of the configuration page;
+- in the **Customize badges** section of each panel in the configuration page;
 - or through the API: `POST /JellyTag/CustomBadge/{badgeKey}` to upload,
   `DELETE` on the same path to revert to the default.
 

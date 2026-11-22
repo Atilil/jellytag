@@ -21,11 +21,10 @@ description: >
 artifacts:
   - "Jellyfin.Plugin.JellyTag.dll"
 changelog: |
-  - Subtitles get their own panel: position, layout, colors, all languages or only
-    those without matching audio, labels as EN, CC EN or VOSTEN. Existing setups
-    keep their VOST look.
-  - Language filters: show only some languages, or all except some; undefined (und)
-    tracks are hidden.
-  - Optional Dolby Vision profile badge (DV P5, P7, P8.1...).
-  - Reworked configuration page: compact panels, each customizing only its active
-    badges; languages are picked by name.
+  - Optional rating badges: TMDB/IMDb and Rotten Tomatoes ratings stored by
+    Jellyfin, with a star and a tomato icon (replaceable).
+  - Top center and bottom center positions; a panel can join the previous panel's
+    row; badge sizes up to 100%.
+  - Switch to leave episode images without badges.
+  - Fixes: a zero margin is kept, sizes above 50% are honoured, simpler video
+    length panel.
