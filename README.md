@@ -36,6 +36,8 @@ configuration.
 - **Multi-category badges**: resolution, HDR and Dolby Vision, video codec,
   audio, language flags and VOST indicator.
 - **All clients**: badges are drawn on the server, not in the client.
+- **Optional video length badge** (e.g. `1h 52m`) on movies and episodes,
+  disabled by default.
 - **Per image type**: independent settings for posters and thumbnails.
 - **Per category panels**: position, layout, order, size, colors, and "highest
   only" or "all" display mode.

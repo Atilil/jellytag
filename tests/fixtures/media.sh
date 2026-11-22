@@ -8,12 +8,12 @@ media=$1/movies
 # A global LD_LIBRARY_PATH (alsa-lib from the host profile) breaks the flake ffmpeg.
 ff() { env -u LD_LIBRARY_PATH ffmpeg -loglevel error -y "$@"; }
 
-movie() { # $1 title, $2 resolution, $3 audio layout, $4 audio language, [$5 version suffix], [$6 audio title]
+movie() { # $1 title, $2 resolution, $3 audio layout, $4 audio language, [$5 version suffix], [$6 audio title], [$7 seconds]
     local dir="$media/$1 (2024)"
     mkdir -p "$dir"
     [[ -f "$dir/$1 (2024)${5:-}.mkv" ]] || ff \
-        -f lavfi -i "testsrc=duration=2:size=$2:rate=24" \
-        -f lavfi -i "anullsrc=channel_layout=$3:sample_rate=48000" -t 2 \
+        -f lavfi -i "testsrc=duration=${7:-2}:size=$2:rate=24" \
+        -f lavfi -i "anullsrc=channel_layout=$3:sample_rate=48000" -t "${7:-2}" \
         -c:v libx264 -pix_fmt yuv420p -c:a aac -metadata:s:a:0 "language=$4" -metadata:s:a:0 "title=${6:-}" \
         "$dir/$1 (2024)${5:-}.mkv"
     [[ -f "$dir/poster.jpg" ]] || ff -f lavfi -i "testsrc2=size=1000x1500" -frames:v 1 "$dir/poster.jpg"
@@ -32,3 +32,5 @@ movie "JT Multi" 3840x2160 5.1 eng " - 4K"
 # French variants are told apart by the audio track title, the language is "fre" for both.
 movie "JT VFQ" 1920x1080 stereo fre "" VFQ
 movie "JT VFF" 1920x1080 stereo fre "" VFF
+# Long enough for the video length badge, which skips runtimes under a minute.
+movie "JT Long" 320x240 stereo eng "" "" 120

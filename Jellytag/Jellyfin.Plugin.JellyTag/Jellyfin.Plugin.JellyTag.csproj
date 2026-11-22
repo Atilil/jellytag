@@ -38,4 +38,8 @@
     <EmbeddedResource Include="Assets/*.png" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Jellyfin.Plugin.JellyTag.Tests" />
+  </ItemGroup>
+
 </Project>
