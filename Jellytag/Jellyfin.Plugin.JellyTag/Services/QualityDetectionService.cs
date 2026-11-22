@@ -377,7 +377,7 @@ public class QualityDetectionService : IQualityDetectionService
         foreach (var stream in audioStreams)
         {
             var lang = stream.Language;
-            if (lang == null) continue;
+            if (string.IsNullOrEmpty(lang)) continue;
 
             var langLower = lang.ToLowerInvariant();
             var displayTitle = stream.DisplayTitle?.ToUpperInvariant() ?? "";
