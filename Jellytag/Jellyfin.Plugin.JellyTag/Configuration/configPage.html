@@ -36,6 +36,13 @@
             .badge-card .badge-label { margin-top: .4em; font-size: .85em; text-align: center; }
             .badge-card .badge-reset { position: absolute; top: 4px; right: 4px; background: #c62828; color: #fff; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 12px; line-height: 20px; text-align: center; cursor: pointer; display: none; padding: 0; }
             .badge-card.custom .badge-reset { display: block; }
+            .jellytag-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0 1em; }
+            .jellytag-row.three { grid-template-columns: 1fr 1fr 1fr; }
+            .jellytag-custom-images { display: flex; flex-wrap: wrap; gap: 8px; margin: .6em 0; }
+            .jellytag-custom-images > .badge-cards { display: contents; }
+            .badge-cards { display: flex; flex-wrap: wrap; gap: 8px; }
+            .badge-cards .badge-card { padding: .3em .4em; }
+            .badge-cards .badge-card img { width: 72px; height: 36px; }
             .jellytag-config-layout { display: block; margin-right: 350px; }
             .jellytag-config-layout > form { min-width: 0; }
             .jellytag-preview-panel { position: fixed; top: 4.5em; width: 322px; max-height: calc(100vh - 5.5em); overflow-y: auto; border: 1px solid rgba(255,255,255,.12); border-radius: .4em; background: rgba(20,20,20,.95); padding: 1em; z-index: 50; }
@@ -124,50 +131,6 @@
                         </div>
                     </details>
 
-                    <!-- Custom Badge Text -->
-                    <details class="jellytag-section">
-                        <summary>Custom Badge Text</summary>
-                        <div class="jellytag-section-body">
-                            <div class="fieldDescription" style="margin-bottom:1em;">Override the display text for any badge. Leave empty to use the default text.</div>
-                            <div class="jellytag-grid" id="CustomBadgeTextsGrid">
-                                <div class="inputContainer"><label class="inputLabel inputLabelUnfocused" for="cbt_4k">4K</label><input id="cbt_4k" data-badge-key="4k" type="text" placeholder="4K" is="emby-input" /></div>
-                                <div class="inputContainer"><label class="inputLabel inputLabelUnfocused" for="cbt_1080p">1080p</label><input id="cbt_1080p" data-badge-key="1080p" type="text" placeholder="1080p" is="emby-input" /></div>
-                                <div class="inputContainer"><label class="inputLabel inputLabelUnfocused" for="cbt_720p">720p</label><input id="cbt_720p" data-badge-key="720p" type="text" placeholder="720p" is="emby-input" /></div>
-                                <div class="inputContainer"><label class="inputLabel inputLabelUnfocused" for="cbt_sd">SD</label><input id="cbt_sd" data-badge-key="sd" type="text" placeholder="SD" is="emby-input" /></div>
-                                <div class="inputContainer"><label class="inputLabel inputLabelUnfocused" for="cbt_hdr10">HDR10</label><input id="cbt_hdr10" data-badge-key="hdr10" type="text" placeholder="HDR10" is="emby-input" /></div>
-                                <div class="inputContainer"><label class="inputLabel inputLabelUnfocused" for="cbt_hdr10plus">HDR10+</label><input id="cbt_hdr10plus" data-badge-key="hdr10plus" type="text" placeholder="HDR10+" is="emby-input" /></div>
-                                <div class="inputContainer"><label class="inputLabel inputLabelUnfocused" for="cbt_dv">Dolby Vision</label><input id="cbt_dv" data-badge-key="dv" type="text" placeholder="DV" is="emby-input" /></div>
-                                <div class="inputContainer"><label class="inputLabel inputLabelUnfocused" for="cbt_hlg">HLG</label><input id="cbt_hlg" data-badge-key="hlg" type="text" placeholder="HLG" is="emby-input" /></div>
-                                <div class="inputContainer"><label class="inputLabel inputLabelUnfocused" for="cbt_hdr">HDR (generic)</label><input id="cbt_hdr" data-badge-key="hdr" type="text" placeholder="HDR" is="emby-input" /></div>
-                                <div class="inputContainer"><label class="inputLabel inputLabelUnfocused" for="cbt_atmos">Dolby Atmos</label><input id="cbt_atmos" data-badge-key="atmos" type="text" placeholder="ATMOS" is="emby-input" /></div>
-                                <div class="inputContainer"><label class="inputLabel inputLabelUnfocused" for="cbt_dtsx">DTS:X</label><input id="cbt_dtsx" data-badge-key="dtsx" type="text" placeholder="DTS:X" is="emby-input" /></div>
-                                <div class="inputContainer"><label class="inputLabel inputLabelUnfocused" for="cbt_truehd">TrueHD</label><input id="cbt_truehd" data-badge-key="truehd" type="text" placeholder="TrueHD" is="emby-input" /></div>
-                                <div class="inputContainer"><label class="inputLabel inputLabelUnfocused" for="cbt_dtshdma">DTS-HD MA</label><input id="cbt_dtshdma" data-badge-key="dtshdma" type="text" placeholder="DTS-HD MA" is="emby-input" /></div>
-                                <div class="inputContainer"><label class="inputLabel inputLabelUnfocused" for="cbt_7_1">7.1</label><input id="cbt_7_1" data-badge-key="7.1" type="text" placeholder="7.1" is="emby-input" /></div>
-                                <div class="inputContainer"><label class="inputLabel inputLabelUnfocused" for="cbt_5_1">5.1</label><input id="cbt_5_1" data-badge-key="5.1" type="text" placeholder="5.1" is="emby-input" /></div>
-                                <div class="inputContainer"><label class="inputLabel inputLabelUnfocused" for="cbt_stereo">Stereo</label><input id="cbt_stereo" data-badge-key="stereo" type="text" placeholder="STEREO" is="emby-input" /></div>
-                                <div class="inputContainer"><label class="inputLabel inputLabelUnfocused" for="cbt_3d">3D</label><input id="cbt_3d" data-badge-key="3d" type="text" placeholder="3D" is="emby-input" /></div>
-                                <div class="inputContainer"><label class="inputLabel inputLabelUnfocused" for="cbt_h264">H.264</label><input id="cbt_h264" data-badge-key="h264" type="text" placeholder="H.264" is="emby-input" /></div>
-                                <div class="inputContainer"><label class="inputLabel inputLabelUnfocused" for="cbt_hevc">HEVC</label><input id="cbt_hevc" data-badge-key="hevc" type="text" placeholder="HEVC" is="emby-input" /></div>
-                                <div class="inputContainer"><label class="inputLabel inputLabelUnfocused" for="cbt_av1">AV1</label><input id="cbt_av1" data-badge-key="av1" type="text" placeholder="AV1" is="emby-input" /></div>
-                                <div class="inputContainer"><label class="inputLabel inputLabelUnfocused" for="cbt_vp9">VP9</label><input id="cbt_vp9" data-badge-key="vp9" type="text" placeholder="VP9" is="emby-input" /></div>
-                            </div>
-                        </div>
-                    </details>
-
-                    <!-- Custom Badges -->
-                    <details class="jellytag-section">
-                        <summary>Custom Badges</summary>
-                        <div class="jellytag-section-body">
-                            <div class="fieldDescription" style="margin-bottom: 1em;">Click a badge to upload a custom replacement (SVG, PNG or JPEG). Click the reset button to revert to the default.</div>
-                            <div id="BadgeGallery" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(120px, 1fr)); gap:12px;"></div>
-                            <h3 style="margin-top: 1.5em;">Language flags</h3>
-                            <div class="fieldDescription" style="margin-bottom: 1em;">Flags are chosen by audio language code, e.g. replace the English flag with the US flag.</div>
-                            <div id="FlagGallery" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(120px, 1fr)); gap:12px;"></div>
-                            <input id="CustomBadgeFile" type="file" accept="image/svg+xml,image/png,image/jpeg" style="display:none;" />
-                        </div>
-                    </details>
-
                     <!-- Performance -->
                     <details class="jellytag-section">
                         <summary>Performance</summary>
@@ -201,6 +164,7 @@
                         <button id="ExportConfig" type="button" is="emby-button" class="raised block" style="width:100%; margin-top:.5em;"><span>Export Config</span></button>
                         <button id="ImportConfigBtn" type="button" is="emby-button" class="raised block" style="width:100%; margin-top:.5em;"><span>Import Config</span></button>
                         <input id="ImportConfigFile" type="file" accept="application/json,.json" style="display:none;" />
+                        <input id="CustomBadgeFile" type="file" accept="image/svg+xml,image/png,image/jpeg" style="display:none;" />
                         <button id="ResetAllSettings" type="button" is="emby-button" class="raised block" style="background:#888; width:100%; margin-top:.5em;"><span>Reset All Settings to Default</span></button>
                     </div>
                 </form>
@@ -234,7 +198,7 @@
             },
             Hdr: {
                 title: 'HDR / 3D Badges',
-                badges: [{id:'Hdr10',key:'hdr10',label:'HDR10'},{id:'Hdr10Plus',key:'hdr10plus',label:'HDR10+'},{id:'DV',key:'dv',label:'Dolby Vision'},{id:'HLG',key:'hlg',label:'HLG'},{id:'GenericHdr',key:'hdr',label:'Generic HDR'},{id:'3D',key:'3d',label:'3D'},{id:'DvProfile',key:'dvprofile',label:'Dolby Vision profile (DV P8.1...)'}],
+                badges: [{id:'Hdr10',key:'hdr10',label:'HDR10'},{id:'Hdr10Plus',key:'hdr10plus',label:'HDR10+'},{id:'DV',key:'dv',label:'Dolby Vision'},{id:'HLG',key:'hlg',label:'HLG'},{id:'GenericHdr',key:'hdr',label:'Other HDR (unknown type)'},{id:'3D',key:'3d',label:'3D'},{id:'DvProfile',key:'dvprofile',label:'Dolby Vision profile (DV P8.1...)'}],
                 hasShowMode: true,
                 showModeOptions: [{v:'Highest',l:'Highest only'},{v:'All',l:'All'}]
             },
@@ -255,6 +219,33 @@
                 hasShowMode: false
             }
         };
+
+        // ===== Custom images and texts (shared by posters and thumbnails) =====
+        var DV_PROFILES = ['5', '7', '8.1', '8.2', '8.4', '10.0', '10.1', '10.2', '10.4'];
+        var KEY_LABELS = {
+            '4k':'4K', '1080p':'1080p', '720p':'720p', 'sd':'SD',
+            'hdr10':'HDR10', 'hdr10plus':'HDR10+', 'dv':'Dolby Vision', 'hlg':'HLG', 'hdr':'Other HDR', '3d':'3D',
+            'h264':'H.264', 'hevc':'HEVC', 'av1':'AV1', 'vp9':'VP9',
+            'atmos':'Atmos', 'dtsx':'DTS:X', 'truehd':'TrueHD', 'dtshdma':'DTS-HD MA',
+            '7.1':'7.1', '5.1':'5.1', 'stereo':'Stereo'
+        };
+        DV_PROFILES.forEach(function(p) { KEY_LABELS['dvp' + p] = 'DV P' + p; });
+        // Text drawn when the panel style is Text and no custom text is set.
+        var DEFAULT_TEXTS = {
+            '4k':'4K', '1080p':'1080p', '720p':'720p', 'sd':'SD',
+            'hdr10':'HDR10', 'hdr10plus':'HDR10+', 'dv':'DV', 'hlg':'HLG', 'hdr':'HDR', '3d':'3D',
+            'h264':'H.264', 'hevc':'HEVC', 'av1':'AV1', 'vp9':'VP9',
+            'atmos':'ATMOS', 'dtsx':'DTS:X', 'truehd':'TrueHD', 'dtshdma':'DTS-HD MA',
+            '7.1':'7.1', '5.1':'5.1', 'stereo':'STEREO'
+        };
+
+        // Badge keys behind a panel checkbox, with a custom image and/or a custom text.
+        function customKeysOf(b) {
+            if (b.key === 'channel') return { images: ['7.1', '5.1', 'stereo'], texts: ['7.1', '5.1', 'stereo'] };
+            if (b.key === 'dvprofile') return { images: DV_PROFILES.map(function(p) { return 'dvp' + p; }), texts: [] };
+            if (b.key === 'runtime') return { images: [], texts: [] };
+            return { images: [b.key], texts: [b.key] };
+        }
 
         // ===== HTML Generation =====
         function sel(id, label, options) {
@@ -307,22 +298,41 @@
             def.badges.forEach(function(b) { h += chk(k + b.id, b.label); });
             h += '</div>';
 
-            h += sel(k + 'Position', 'Position', POS_OPTS);
-            if (def.hasShowMode) {
-                h += '<div id="' + k + 'ShowModeWrap">';
-                h += sel(k + 'ShowMode', 'Show', def.showModeOptions);
-                h += '</div>';
-            }
-            h += '<div id="' + k + 'LayoutWrap">' + sel(k + 'Layout', 'Layout', LAYOUT_OPTS) + '</div>';
-            h += '<div id="' + k + 'GapWrap">' + num(k + 'Gap', 'Gap between badges (%)', 0, 50, 1) + '</div>';
-            h += num(k + 'Size', 'Badge Size (%)', 0, 100, 1);
-            h += num(k + 'Margin', 'Margin (%)', 0, 20, 0.5);
+            h += '<div class="jellytag-row">';
+            h += def.hasShowMode ? '<div id="' + k + 'ShowModeWrap">' + sel(k + 'ShowMode', 'Show', def.showModeOptions) + '</div>' : '<div></div>';
             h += sel(k + 'Style', 'Badge Style', [{v:'Image',l:'Image'},{v:'Text',l:'Text'}]);
+            h += '</div>';
+            h += '<div class="jellytag-row">' + sel(k + 'Position', 'Position', POS_OPTS);
+            h += '<div id="' + k + 'LayoutWrap">' + sel(k + 'Layout', 'Layout', LAYOUT_OPTS) + '</div></div>';
+            h += '<div class="jellytag-row three"><div id="' + k + 'GapWrap">' + num(k + 'Gap', 'Gap (%)', 0, 50, 1) + '</div>';
+            h += num(k + 'Size', 'Size (%)', 0, 100, 1) + num(k + 'Margin', 'Margin (%)', 0, 20, 0.5) + '</div>';
 
-            // Text settings
+            // Customization of the checked badges only
+            h += '<details class="jellytag-sub"><summary>Customize badges</summary><div class="jellytag-sub-body">';
+            h += '<div class="fieldDescription">Custom images and texts are shared by posters and thumbnails.</div>';
+            h += '<div class="fieldDescription" id="' + k + 'CustomEmpty">Check a badge above to customize it.</div>';
+            // Image style: the badge images
+            h += '<div id="' + k + 'CustomImages">';
+            h += '<div class="fieldDescription">Click a badge to replace its image (SVG, PNG or JPEG), &times; restores the default.</div>';
+            h += '<div class="jellytag-custom-images">';
+            def.badges.forEach(function(b) {
+                var ck = customKeysOf(b);
+                if (ck.images.length) h += '<div class="badge-cards" data-check="' + k + b.id + '" data-keys="' + ck.images.join(',') + '"></div>';
+            });
+            h += '</div></div>';
+            // Text style: the badge texts
+            h += '<div id="' + k + 'CustomTexts" class="jellytag-row three">';
+            def.badges.forEach(function(b) {
+                customKeysOf(b).texts.forEach(function(t) {
+                    h += '<div class="inputContainer" data-check="' + k + b.id + '"><label class="inputLabel inputLabelUnfocused">' + KEY_LABELS[t] + '</label>' +
+                        '<input type="text" is="emby-input" class="cbt-input" data-badge-key="' + t + '" placeholder="' + DEFAULT_TEXTS[t] + '" /></div>';
+                });
+            });
+            h += '</div>';
+
+            // Text style colors
             h += '<div id="' + k + 'TextSettings" class="jellytag-text-box hidden">';
-            // Badge type selector
-            h += '<div class="inputContainer"><label class="inputLabel inputLabelUnfocused" for="' + k + 'BadgeSel">Apply to</label>';
+            h += '<div class="inputContainer"><label class="inputLabel inputLabelUnfocused" for="' + k + 'BadgeSel">Colors for</label>';
             h += '<select id="' + k + 'BadgeSel" is="emby-select"><option value="__global__">Global (all)</option>';
             def.badges.forEach(function(b) { h += '<option value="' + b.key + '">' + b.label + '</option>'; });
             h += '</select></div>';
@@ -331,6 +341,7 @@
             h += num(k + 'CornerRadius', 'Corner Radius (%)', 0, 50, 1);
             h += '<button id="' + k + 'ResetText" type="button" is="emby-button" class="raised"><span>Reset to global</span></button>';
             h += '</div>'; // TextSettings
+            h += '</div></details>';
 
             h += '</div>'; // Settings
             h += '</div></details>';
@@ -342,13 +353,12 @@
             var h = '<details class="jellytag-sub" data-panel-id="Lang"><summary>Language Badges' + arrowBtns() + '</summary><div class="jellytag-sub-body">';
             h += chk(k + 'Enabled', 'Enable');
             h += '<div id="' + k + 'Settings">';
-            h += sel(k + 'Position', 'Position', POS_OPTS);
-            h += sel(k + 'ShowMode', 'Show', [{v:'All',l:'All'},{v:'Highest',l:'Default Only'}]);
-            h += '<div id="' + k + 'LayoutWrap">' + sel(k + 'Layout', 'Layout', LAYOUT_OPTS) + '</div>';
-            h += '<div id="' + k + 'GapWrap">' + num(k + 'Gap', 'Gap between badges (%)', 0, 50, 1) + '</div>';
-            h += num(k + 'Size', 'Badge Size (%)', 0, 100, 1);
-            h += num(k + 'Margin', 'Margin (%)', 0, 20, 0.5);
-            h += sel(k + 'Style', 'Badge Style', [{v:'Image',l:'Image'},{v:'Text',l:'Text'}]);
+            h += '<div class="jellytag-row">' + sel(k + 'ShowMode', 'Show', [{v:'All',l:'All'},{v:'Highest',l:'Default Only'}]);
+            h += sel(k + 'Style', 'Badge Style', [{v:'Image',l:'Image'},{v:'Text',l:'Text'}]) + '</div>';
+            h += '<div class="jellytag-row">' + sel(k + 'Position', 'Position', POS_OPTS);
+            h += '<div id="' + k + 'LayoutWrap">' + sel(k + 'Layout', 'Layout', LAYOUT_OPTS) + '</div></div>';
+            h += '<div class="jellytag-row three"><div id="' + k + 'GapWrap">' + num(k + 'Gap', 'Gap (%)', 0, 50, 1) + '</div>';
+            h += num(k + 'Size', 'Size (%)', 0, 100, 1) + num(k + 'Margin', 'Margin (%)', 0, 20, 0.5) + '</div>';
             h += '<div id="' + k + 'TextSettings" class="jellytag-text-box hidden">';
             h += colorAlpha(k + 'BgColor', k + 'BgOpacity', 'Background Color');
             h += colorOnly(k + 'TextColor', 'Text Color');
@@ -362,6 +372,10 @@
             h += colorOnly(k + 'VostTextColor', 'VOST Text Color');
             h += num(k + 'VostCornerRadius', 'VOST Corner Radius (%)', 0, 50, 1);
             h += '</div></div>';
+            h += '<details class="jellytag-sub"><summary>Customize flags</summary><div class="jellytag-sub-body">';
+            h += '<div class="fieldDescription">Flags follow the audio language code: replace the English flag with the US flag, for example. Shared by posters and thumbnails.</div>';
+            h += '<div class="badge-cards flag-cards"></div>';
+            h += '</div></details>';
             h += '</div>'; // Settings
             h += '</div></details>';
             return h;
@@ -522,7 +536,14 @@
             var styleEl = document.querySelector('#' + key + 'Style');
             var textDiv = document.querySelector('#' + key + 'TextSettings');
             if (!styleEl || !textDiv) return;
-            function toggle() { styleEl.value === 'Text' ? textDiv.classList.remove('hidden') : textDiv.classList.add('hidden'); }
+            var images = document.querySelector('#' + key + 'CustomImages');
+            var texts = document.querySelector('#' + key + 'CustomTexts');
+            function toggle() {
+                var isText = styleEl.value === 'Text';
+                textDiv.classList.toggle('hidden', !isText);
+                if (images) images.classList.toggle('hidden', isText);
+                if (texts) texts.classList.toggle('hidden', !isText);
+            }
             styleEl.addEventListener('change', toggle);
             toggle();
         }
@@ -616,8 +637,39 @@
             });
         }
 
+        // Only the checked badges can be customized.
+        function setupCustomRows(key) {
+            var rows = document.querySelectorAll('[data-check^="' + key + '"]');
+            var selEl = document.querySelector('#' + key + 'BadgeSel');
+            var def = PANEL_DEFS[key.replace(/^(Poster|Thumb)/, '')];
+            function update() {
+                var any = false;
+                rows.forEach(function(row) {
+                    var cb = document.querySelector('#' + row.getAttribute('data-check'));
+                    var on = !!(cb && cb.checked);
+                    row.classList.toggle('hidden', !on);
+                    any = any || on;
+                });
+                var empty = document.querySelector('#' + key + 'CustomEmpty');
+                if (empty) empty.classList.toggle('hidden', any);
+                if (selEl && def) {
+                    def.badges.forEach(function(b) {
+                        var cb = document.querySelector('#' + key + b.id);
+                        var opt = selEl.querySelector('option[value="' + b.key + '"]');
+                        if (opt) opt.hidden = !(cb && cb.checked);
+                    });
+                }
+            }
+            if (def) def.badges.forEach(function(b) {
+                var cb = document.querySelector('#' + key + b.id);
+                if (cb) cb.addEventListener('change', update);
+            });
+            update();
+        }
+
         function setupAllToggles(prefix) {
             ['Res', 'Hdr', 'Codec', 'Audio', 'Runtime'].forEach(function(pid) {
+                setupCustomRows(prefix + pid);
                 setupEnableToggle(prefix + pid);
                 setupStyleToggle(prefix + pid);
                 setupBadgeSelToggle(prefix + pid);
@@ -820,11 +872,11 @@
             config.ShowDtsHdMa = null; config.ShowChannelBadge = null;
             config.LanguageBadgeMode = null; config.ShowSubtitleIndicator = null;
 
-            // Custom Badge Texts
-            var saveCbt = [];
-            document.querySelectorAll('#CustomBadgeTextsGrid input[data-badge-key]').forEach(function(el) {
-                var val = el.value.trim();
-                if (val) saveCbt.push({ Key: el.getAttribute('data-badge-key'), Text: val });
+            // Custom badge texts: one value per key (poster and thumbnail fields are kept in sync)
+            var saveCbt = [], seen = {};
+            document.querySelectorAll('.cbt-input').forEach(function(el) {
+                var key = el.getAttribute('data-badge-key'), val = el.value.trim();
+                if (val && !seen[key]) { seen[key] = true; saveCbt.push({ Key: key, Text: val }); }
             });
             config.CustomBadgeTexts = saveCbt;
 
@@ -882,17 +934,7 @@
             return excluded;
         }
 
-        // ===== Badge Gallery =====
-        var allBadgeKeys = [
-            {key:'4k',label:'4K'},{key:'1080p',label:'1080p'},{key:'720p',label:'720p'},{key:'sd',label:'SD'},
-            {key:'hdr10',label:'HDR10'},{key:'hdr10plus',label:'HDR10+'},{key:'dv',label:'Dolby Vision'},{key:'hlg',label:'HLG'},
-            {key:'dvp5',label:'DV P5'},{key:'dvp7',label:'DV P7'},{key:'dvp8.1',label:'DV P8.1'},{key:'dvp8.2',label:'DV P8.2'},{key:'dvp8.4',label:'DV P8.4'},
-            {key:'dvp10.0',label:'DV P10.0'},{key:'dvp10.1',label:'DV P10.1'},{key:'dvp10.2',label:'DV P10.2'},{key:'dvp10.4',label:'DV P10.4'},
-            {key:'atmos',label:'Atmos'},{key:'dtsx',label:'DTS:X'},{key:'truehd',label:'TrueHD'},{key:'dtshdma',label:'DTS-HD MA'},
-            {key:'5.1',label:'5.1'},{key:'7.1',label:'7.1'},{key:'stereo',label:'Stereo'},
-            {key:'h264',label:'H.264'},{key:'hevc',label:'HEVC'},{key:'av1',label:'AV1'},{key:'vp9',label:'VP9'}
-        ];
-
+        // ===== Badge images =====
         // Same rule as the server: flags keep their key, other badges get a prefix (5.1 -> badge-5_1).
         function badgeFileStem(key) {
             return key.indexOf('flag-') === 0 ? key : 'badge-' + key.replace('.', '_');
@@ -930,10 +972,16 @@
             function getJson(path) { return fetch(ApiClient.getUrl(path), {headers:headers}).then(function(r){return r.json();}); }
             Promise.all([getJson('JellyTag/CustomBadges'), getJson('JellyTag/Flags')]).then(function(res) {
                 var customList = res[0], flags = res[1];
-                var gallery = document.querySelector('#BadgeGallery'); gallery.innerHTML = '';
-                allBadgeKeys.forEach(function(b) { addBadgeCard(gallery, b, customList, token); });
-                var flagGallery = document.querySelector('#FlagGallery'); flagGallery.innerHTML = '';
-                flags.forEach(function(code) { addBadgeCard(flagGallery, {key:'flag-' + code, label:code}, customList, token); });
+                document.querySelectorAll('.badge-cards[data-keys]').forEach(function(box) {
+                    box.innerHTML = '';
+                    box.getAttribute('data-keys').split(',').forEach(function(key) {
+                        addBadgeCard(box, {key:key, label:KEY_LABELS[key] || key}, customList, token);
+                    });
+                });
+                document.querySelectorAll('.flag-cards').forEach(function(box) {
+                    box.innerHTML = '';
+                    flags.forEach(function(code) { addBadgeCard(box, {key:'flag-' + code, label:code}, customList, token); });
+                });
             }).catch(function(err) { console.error('[JellyTag] Badge gallery error:', err); });
         }
 
@@ -966,7 +1014,7 @@
                 loadImageTypeConfig('Thumb', config.ThumbnailConfig || {});
 
                 // Custom Badge Texts
-                var cbtInputs = document.querySelectorAll('#CustomBadgeTextsGrid input[data-badge-key]');
+                var cbtInputs = document.querySelectorAll('.cbt-input');
                 var cbtList = config.CustomBadgeTexts || [];
                 var cbtMap = {};
                 cbtList.forEach(function(item) { cbtMap[item.Key || item.key] = item.Text || item.text; });
@@ -1066,6 +1114,15 @@
                     Dashboard.hideLoadingMsg();Dashboard.alert('Settings reset. Reloading...');window.location.reload();
                 }).catch(function(){Dashboard.hideLoadingMsg();Dashboard.alert('Failed to reset settings.');});
             }
+        });
+
+        // Custom texts are global: mirror a field into its twin in the other image type.
+        document.querySelector('#JellyTagConfigForm').addEventListener('input', function(e) {
+            if (!e.target.classList.contains('cbt-input')) return;
+            var key = e.target.getAttribute('data-badge-key');
+            document.querySelectorAll('.cbt-input').forEach(function(el) {
+                if (el !== e.target && el.getAttribute('data-badge-key') === key) el.value = e.target.value;
+            });
         });
 
         var outputFmtEl = document.querySelector('#OutputFormat');
