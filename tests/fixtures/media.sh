@@ -34,3 +34,15 @@ movie "JT VFQ" 1920x1080 stereo fre "" VFQ
 movie "JT VFF" 1920x1080 stereo fre "" VFF
 # Long enough for the video length badge, which skips runtimes under a minute.
 movie "JT Long" 320x240 stereo eng "" "" 120
+# #10: three audio tracks, the default one is not the first (ffmpeg flags the first by default).
+dir="$media/JT Default (2024)"
+mkdir -p "$dir"
+[[ -f "$dir/JT Default (2024).mkv" ]] || ff -f lavfi -i "testsrc=duration=2:size=1920x1080:rate=24" \
+    -f lavfi -i "anullsrc=channel_layout=stereo:sample_rate=48000" -t 2 \
+    -map 0:v -map 1:a -map 1:a -map 1:a -c:v libx264 -pix_fmt yuv420p -c:a aac \
+    -metadata:s:a:0 language=deu -metadata:s:a:1 language=jpn -metadata:s:a:2 language=eng \
+    -disposition:a:0 0 -disposition:a:1 default -disposition:a:2 0 \
+    "$dir/JT Default (2024).mkv"
+[[ -f "$dir/poster.jpg" ]] || ff -f lavfi -i "testsrc2=size=1000x1500" -frames:v 1 "$dir/poster.jpg"
+printf '<?xml version="1.0" encoding="utf-8" standalone="yes"?>\n<movie>\n  <title>JT Default</title>\n  <year>2024</year>\n</movie>\n' \
+    >"$dir/JT Default (2024).nfo"

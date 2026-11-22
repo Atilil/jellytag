@@ -396,7 +396,7 @@ public class QualityDetectionService : IQualityDetectionService
     /// Detects all language and subtitle badges. Always detects all languages;
     /// filtering by mode (DefaultOnly/All) is done in ShouldShowBadge.
     /// </summary>
-    private static List<BadgeInfo> DetectLanguages(List<MediaStream> allStreams)
+    internal static List<BadgeInfo> DetectLanguages(List<MediaStream> allStreams)
     {
         var badges = new List<BadgeInfo>();
         var audioStreams = allStreams.Where(s => s.Type == MediaStreamType.Audio).ToList();
@@ -404,8 +404,14 @@ public class QualityDetectionService : IQualityDetectionService
 
         var addedLanguages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        // Detect all audio languages
-        foreach (var stream in audioStreams)
+        // Default track first: the "Highest" mode shows only the first flag. The others
+        // alphabetically, so the flags do not depend on the track order in the file.
+        var primary = audioStreams.FirstOrDefault(s => s.IsDefault) ?? audioStreams[0];
+        var ordered = audioStreams
+            .OrderBy(s => s == primary ? 0 : 1)
+            .ThenBy(s => s.Language, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var stream in ordered)
         {
             var lang = stream.Language;
             if (string.IsNullOrEmpty(lang)) continue;

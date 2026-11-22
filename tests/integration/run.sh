@@ -86,7 +86,7 @@ api POST "/Library/VirtualFolders?name=movies&collectionType=movies&paths=/media
 api POST /Library/Refresh
 
 scan_done() {
-    [[ $(api GET "/Items?Recursive=true&IncludeItemTypes=Movie" | jq .TotalRecordCount) == 9 ]] &&
+    [[ $(api GET "/Items?Recursive=true&IncludeItemTypes=Movie" | jq .TotalRecordCount) == 10 ]] &&
         api GET /ScheduledTasks | jq -e '.[] | select(.Key == "RefreshLibrary") | .State == "Idle"'
 }
 wait_for 180 "the library scan" scan_done
@@ -115,6 +115,7 @@ declare -A expected=(
     ["JT VFF"]=1080p_h264_stereo_vff
     ["JT Long"]=sd_h264_stereo_eng
     ["JT Multi"]=4k_1080p_h264_5.1_stereo_eng_fra
+    ["JT Default"]=1080p_h264_stereo_deu_eng_jpn
 )
 declare -A rendered
 for title in "${!expected[@]}"; do
@@ -124,11 +125,15 @@ for title in "${!expected[@]}"; do
     check "$title: detected badges" "$(sorted <<<"${expected[$title]}")" "$(badges "$title")"
 done
 
+# The language panel keeps the order of detection: default track first, then alphabetical.
+languages() { podman logs "$container" 2>&1 | grep -F "badges to $1: " | tail -1 | sed 's/.*: //' | tr _ '\n' | grep -xE 'deu|eng|jpn' | paste -sd_; }
+check "JT Default: default audio language first" jpn_deu_eng "$(languages "JT Default")"
+
 # --- Cache, then the plugin switched off
 
 title="JT 4K"
 id=$(item "$title")
-check "cache: one rendered image per poster" 9 "$(api GET /JellyTag/CacheStats | jq .FileCount)"
+check "cache: one rendered image per poster" 10 "$(api GET /JellyTag/CacheStats | jq .FileCount)"
 check "cache: same image on the next request" "${rendered[$title]}" "$(served "$id")"
 
 plugin=$(api GET /Plugins | jq -r '.[] | select(.Name == "JellyTag") | .Id')
