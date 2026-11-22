@@ -21,9 +21,10 @@ description: >
 artifacts:
   - "Jellyfin.Plugin.JellyTag.dll"
 changelog: |
-  - Jellyfin 12.x support (built for 12.4, .NET 10).
-  - Fix 401 errors on configuration export and broken custom badge previews.
-  - Plugin data no longer lives in Jellyfin's plugins folder, which could wipe
-    every plugin's settings on servers whose path contains an underscore (e.g. QNAP).
-  - Narrow 1080p encodes (e.g. 4:3 at 1440x1080) and 4:3 720p are detected correctly.
-  - Uses Jellyfin's own Svg.Skia: the package now ships a single DLL.
+  - Badges cover every version of a movie (e.g. 1080p and 4K files).
+  - Language flags: the default audio track comes first, the others alphabetically;
+    15 new flags; flags can be replaced in the custom badge gallery.
+  - Dolby Vision is shown with its HDR10/HDR10+/HLG base layer, Atmos with
+    TrueHD, DTS:X with DTS-HD MA (set the HDR or audio panel to "All" to see both).
+  - French VFQ/VFF audio detection and an optional video length badge.
+  - Intro videos added by other plugins no longer get badges.
