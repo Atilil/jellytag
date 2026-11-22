@@ -86,7 +86,7 @@ api POST "/Library/VirtualFolders?name=movies&collectionType=movies&paths=/media
 api POST /Library/Refresh
 
 scan_done() {
-    [[ $(api GET "/Items?Recursive=true&IncludeItemTypes=Movie" | jq .TotalRecordCount) == 8 ]] &&
+    [[ $(api GET "/Items?Recursive=true&IncludeItemTypes=Movie" | jq .TotalRecordCount) == 9 ]] &&
         api GET /ScheduledTasks | jq -e '.[] | select(.Key == "RefreshLibrary") | .State == "Idle"'
 }
 wait_for 180 "the library scan" scan_done
@@ -113,6 +113,7 @@ declare -A expected=(
     ["JT SD"]=sd_h264_jpn
     ["JT VFQ"]=1080p_h264_stereo_vq
     ["JT VFF"]=1080p_h264_stereo_vff
+    ["JT Long"]=sd_h264_stereo_eng
     ["JT Multi"]=4k_1080p_h264_5.1_stereo_eng_fra
 )
 declare -A rendered
@@ -127,10 +128,21 @@ done
 
 title="JT 4K"
 id=$(item "$title")
-check "cache: one rendered image per poster" 8 "$(api GET /JellyTag/CacheStats | jq .FileCount)"
+check "cache: one rendered image per poster" 9 "$(api GET /JellyTag/CacheStats | jq .FileCount)"
 check "cache: same image on the next request" "${rendered[$title]}" "$(served "$id")"
 
 plugin=$(api GET /Plugins | jq -r '.[] | select(.Name == "JellyTag") | .Id')
+
+# --- Optional video length badge, off by default
+
+api POST "/Plugins/$plugin/Configuration" "$(api GET "/Plugins/$plugin/Configuration" | jq -c '.PosterConfig.RuntimePanel.Enabled = true')"
+title="JT Long"
+id=$(item "$title")
+before=${rendered[$title]}
+check "runtime: poster rendered again" true "$([[ $(served "$id") != "$before" ]] && echo true || echo false)"
+check "runtime: badge added" "$(sorted <<<"${expected[$title]}_runtime")" "$(badges "$title")"
+title="JT 4K"
+id=$(item "$title")
 api POST "/Plugins/$plugin/Configuration" "$(api GET "/Plugins/$plugin/Configuration" | jq -c '.Enabled = false')"
 check "disabled: original poster served" "$(original "$title")" "$(served "$id")"
 
