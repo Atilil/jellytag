@@ -262,6 +262,11 @@
             return '<div class="inputContainer"><label class="inputLabel inputLabelUnfocused" for="' + id + '">' + label + '</label>' +
                 '<input id="' + id + '" type="number" min="' + min + '" max="' + max + '" step="' + step + '" is="emby-input" /></div>';
         }
+        // Unlike `parseFloat(v) || fallback`, keeps a typed 0.
+        function numOr(id, fallback) {
+            var v = parseFloat(q(id).value);
+            return isNaN(v) ? fallback : v;
+        }
         function chk(id, label, desc) {
             var h = '<div class="checkboxContainer checkboxContainer-withDescription"><label class="emby-checkbox-label">';
             h += '<input id="' + id + '" type="checkbox" is="emby-checkbox" /><span>' + label + '</span></label>';
@@ -910,7 +915,7 @@
                 Layout: q(k + 'Layout').value,
                 GapPercent: parseFloat(q(k + 'Gap').value) || 0,
                 SizePercent: parseInt(q(k + 'Size').value, 10) || 15,
-                MarginPercent: parseFloat(q(k + 'Margin').value) || 2.5,
+                MarginPercent: numOr(k + 'Margin', 2.5),
                 Style: q(k + 'Style').value,
                 Order: order,
                 TextBgColor: ov.textBgColor,
@@ -933,7 +938,7 @@
                 Layout: q(k + 'Layout').value,
                 GapPercent: parseFloat(q(k + 'Gap').value) || 0,
                 SizePercent: parseInt(q(k + 'Size').value, 10) || 15,
-                MarginPercent: parseFloat(q(k + 'Margin').value) || 2.5,
+                MarginPercent: numOr(k + 'Margin', 2.5),
                 Style: q(k + 'Style').value,
                 Order: order.Lang != null ? order.Lang : 4,
                 TextBgColor: q(k + 'BgColor').value,
@@ -957,7 +962,7 @@
                 Layout: q(k + 'Layout').value,
                 GapPercent: parseFloat(q(k + 'Gap').value) || 0,
                 SizePercent: parseInt(q(k + 'Size').value, 10) || 15,
-                MarginPercent: parseFloat(q(k + 'Margin').value) || 2.5,
+                MarginPercent: numOr(k + 'Margin', 2.5),
                 Style: 'Text',
                 Order: order,
                 TextBgColor: q(k + 'BgColor').value,
