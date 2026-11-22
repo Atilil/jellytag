@@ -94,7 +94,7 @@ api POST "/Library/VirtualFolders?name=shows&collectionType=tvshows&paths=/media
 api POST /Library/Refresh
 
 scan_done() {
-    [[ $(api GET "/Items?Recursive=true&IncludeItemTypes=Movie" | jq .TotalRecordCount) == 12 ]] &&
+    [[ $(api GET "/Items?Recursive=true&IncludeItemTypes=Movie" | jq .TotalRecordCount) == 13 ]] &&
         [[ $(api GET "/Items?Recursive=true&IncludeItemTypes=Episode" | jq .TotalRecordCount) == 1 ]] &&
         api GET /ScheduledTasks | jq -e '.[] | select(.Key == "RefreshLibrary") | .State == "Idle"'
 }
@@ -126,6 +126,8 @@ declare -A expected=(
     ["JT Multi"]=4k_1080p_h264_5.1_stereo_eng_fra
     ["JT Default"]=1080p_h264_stereo_deu_eng_jpn
     ["JT HDR 3D"]=1080p_hevc_hdr10_3d_stereo_eng
+    # Dolby Vision with its HDR10 base layer (#33).
+    ["JT DV"]=1080p_hevc_dv_hdr10_stereo_eng
     # English subtitles hidden: the English audio is there.
     ["JT Subs"]=1080p_h264_stereo_eng_subfra
 )
@@ -145,7 +147,7 @@ check "JT Default: default audio language first" jpn_deu_eng "$(languages "JT De
 
 title="JT 4K"
 id=$(item "$title")
-check "cache: one rendered image per poster" 12 "$(api GET /JellyTag/CacheStats | jq .FileCount)"
+check "cache: one rendered image per poster" 13 "$(api GET /JellyTag/CacheStats | jq .FileCount)"
 check "cache: same image on the next request" "${rendered[$title]}" "$(served "$id")"
 
 plugin=$(api GET /Plugins | jq -r '.[] | select(.Name == "JellyTag") | .Id')

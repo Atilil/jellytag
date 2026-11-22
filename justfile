@@ -102,7 +102,7 @@ check-pins:
     exit "$status"
 
 # Start the local Jellyfin test instance
-dev-up:
+dev-up: dev-media
     #!/usr/bin/env bash
     set -euo pipefail
     mkdir -p "{{ dev_dir }}"/{config,cache,media} "{{ dev_plugin_dir }}"

@@ -18,6 +18,9 @@
           gitleaks
           just
           ffmpeg
+          # Dolby Vision test fixture: RPU generation and injection, then muxing.
+          dovi-tool
+          mkvtoolnix-cli
           yq-go
           zip
           git-cliff

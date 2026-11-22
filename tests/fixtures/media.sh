@@ -76,6 +76,26 @@ fi
 [[ -f "$dir/poster.jpg" ]] || ff -f lavfi -i "testsrc2=size=1000x1500" -frames:v 1 "$dir/poster.jpg"
 printf '<?xml version="1.0" encoding="utf-8" standalone="yes"?>\n<movie>\n  <title>JT Subs</title>\n  <year>2024</year>\n</movie>\n' \
     >"$dir/JT Subs (2024).nfo"
+# Dolby Vision profile 8.1: dovi_tool generates the metadata (RPU) and interleaves it
+# into an HDR10 HEVC stream, mkvmerge muxes it with the audio.
+dir="$media/JT DV (2024)"
+mkdir -p "$dir"
+if [[ ! -f "$dir/JT DV (2024).mkv" ]]; then
+    tmp=$(mktemp -d)
+    printf '{"cm_version": "V40", "profile": "8.1", "length": 48, "level6": {"max_display_mastering_luminance": 1000, "min_display_mastering_luminance": 1, "max_content_light_level": 1000, "max_frame_average_light_level": 400}}\n' >"$tmp/rpu.json"
+    dovi_tool generate -j "$tmp/rpu.json" -o "$tmp/rpu.bin" >/dev/null
+    # repeat-headers: dovi_tool needs the parameter sets before every frame.
+    ff -f lavfi -i "testsrc=duration=2:size=1920x1080:rate=24" -c:v libx265 -pix_fmt yuv420p10le \
+        -x265-params log-level=error:colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc:repeat-headers=1 \
+        -f hevc "$tmp/base.hevc"
+    dovi_tool inject-rpu -i "$tmp/base.hevc" --rpu-in "$tmp/rpu.bin" -o "$tmp/dv.hevc" >/dev/null
+    ff -f lavfi -i "anullsrc=channel_layout=stereo:sample_rate=48000" -t 2 -c:a aac "$tmp/audio.mka"
+    mkvmerge -q -o "$dir/JT DV (2024).mkv" "$tmp/dv.hevc" --language 0:eng "$tmp/audio.mka"
+    rm -rf "$tmp"
+fi
+[[ -f "$dir/poster.jpg" ]] || ff -f lavfi -i "testsrc2=size=1000x1500" -frames:v 1 "$dir/poster.jpg"
+printf '<?xml version="1.0" encoding="utf-8" standalone="yes"?>\n<movie>\n  <title>JT DV</title>\n  <year>2024</year>\n</movie>\n' \
+    >"$dir/JT DV (2024).nfo"
 # Episodes take the thumbnail settings; the local "<file>-thumb.jpg" is their primary image.
 dir="$1/shows/JT Show/Season 01"
 mkdir -p "$dir"
