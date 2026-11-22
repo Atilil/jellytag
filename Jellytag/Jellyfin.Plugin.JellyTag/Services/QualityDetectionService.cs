@@ -368,11 +368,13 @@ public class QualityDetectionService : IQualityDetectionService
     };
 
     // Only include language codes that have a matching flag-{code}.svg asset
-    private static readonly HashSet<string> KnownFlagCodes = new(StringComparer.OrdinalIgnoreCase)
+    internal static readonly HashSet<string> KnownFlagCodes = new(StringComparer.OrdinalIgnoreCase)
     {
         "fra", "eng", "jpn", "deu", "spa", "ita", "por", "kor", "zho", "rus",
         "nld", "ara", "hin", "tha", "pol", "tur", "swe", "dan", "nor", "fin",
-        "ces", "hun", "ron", "ukr", "vie", "heb", "can"
+        "ces", "hun", "ron", "ukr", "vie", "heb", "can",
+        "bul", "cat", "cym", "ell", "est", "eus", "fil", "glg", "hrv", "ind",
+        "lav", "lit", "msa", "slk", "srp"
     };
 
     private static readonly Dictionary<string, string> FrenchVariantFlags = new(StringComparer.OrdinalIgnoreCase)

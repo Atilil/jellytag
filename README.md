@@ -96,6 +96,12 @@ bundled in Jellyfin) and caches the result on disk.
 - **Performance**: increase the cache duration, lower the JPEG quality, disable
   the badge categories you do not need.
 
+## Credits
+
+Some language flags come from
+[flag-icons](https://github.com/lipis/flag-icons) (MIT), see
+[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
