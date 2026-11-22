@@ -234,7 +234,7 @@
             },
             Hdr: {
                 title: 'HDR / 3D Badges',
-                badges: [{id:'Hdr10',key:'hdr10',label:'HDR10'},{id:'Hdr10Plus',key:'hdr10plus',label:'HDR10+'},{id:'DV',key:'dv',label:'Dolby Vision'},{id:'HLG',key:'hlg',label:'HLG'},{id:'GenericHdr',key:'hdr',label:'Generic HDR'},{id:'3D',key:'3d',label:'3D'}],
+                badges: [{id:'Hdr10',key:'hdr10',label:'HDR10'},{id:'Hdr10Plus',key:'hdr10plus',label:'HDR10+'},{id:'DV',key:'dv',label:'Dolby Vision'},{id:'HLG',key:'hlg',label:'HLG'},{id:'GenericHdr',key:'hdr',label:'Generic HDR'},{id:'3D',key:'3d',label:'3D'},{id:'DvProfile',key:'dvprofile',label:'Dolby Vision profile (DV P8.1...)'}],
                 hasShowMode: true,
                 showModeOptions: [{v:'Highest',l:'Highest only'},{v:'All',l:'All'}]
             },
@@ -329,6 +329,7 @@
             h += colorAlpha(k + 'BgColor', k + 'BgOpacity', 'Background Color');
             h += colorOnly(k + 'TextColor', 'Text Color');
             h += num(k + 'CornerRadius', 'Corner Radius (%)', 0, 50, 1);
+            h += '<button id="' + k + 'ResetText" type="button" is="emby-button" class="raised"><span>Reset to global</span></button>';
             h += '</div>'; // TextSettings
 
             h += '</div>'; // Settings
@@ -461,15 +462,46 @@
             }
         }
 
-        function loadOverrideValues(key, badgeKey) {
-            var s = overrideStates[key]; if (!s) return;
-            saveCurrentOverride(key);
-            s.current = badgeKey;
-            var v = s.values[badgeKey] || s.values['__global__'];
+        function setTextFields(key, v) {
             document.querySelector('#' + key + 'BgColor').value = v.bgColor || '#000000';
             document.querySelector('#' + key + 'BgOpacity').value = v.bgOpacity != null ? v.bgOpacity : 180;
             document.querySelector('#' + key + 'TextColor').value = v.textColor || '#FFFFFF';
             document.querySelector('#' + key + 'CornerRadius').value = v.cornerRadius != null ? v.cornerRadius : 25;
+        }
+
+        function loadOverrideValues(key, badgeKey) {
+            var s = overrideStates[key]; if (!s) return;
+            saveCurrentOverride(key);
+            s.current = badgeKey;
+            setTextFields(key, s.values[badgeKey] || s.values['__global__']);
+            refreshBadgeSelLabels(key);
+        }
+
+        // A dot marks the badges whose text style differs from the panel's global one.
+        function refreshBadgeSelLabels(key) {
+            var s = overrideStates[key], selEl = document.querySelector('#' + key + 'BadgeSel');
+            if (!s || !selEl) return;
+            Array.prototype.forEach.call(selEl.options, function(o) {
+                if (!o.hasAttribute('data-label')) o.setAttribute('data-label', o.textContent);
+                var custom = o.value !== '__global__' && s.values[o.value];
+                o.textContent = (custom ? '\u2022 ' : '') + o.getAttribute('data-label');
+            });
+        }
+
+        // On a badge: drop its own style. On "Global (all)": drop every badge's own style.
+        function resetTextOverride(key) {
+            var s = overrideStates[key]; if (!s) return;
+            if (s.current === '__global__') {
+                var custom = Object.keys(s.values).filter(function(bk) { return bk !== '__global__'; });
+                if (custom.length === 0 || !confirm('Reset ' + custom.length + ' customized badge(s) to the global style?')) return;
+                custom.forEach(function(bk) { delete s.values[bk]; });
+            } else {
+                delete s.values[s.current];
+                setTextFields(key, s.values['__global__']);
+            }
+            refreshBadgeSelLabels(key);
+            // Same event as a field edit, so the live preview refreshes.
+            document.querySelector('#' + key + 'BgColor').dispatchEvent(new Event('change', { bubbles: true }));
         }
 
         function collectOverrides(key) {
@@ -508,6 +540,14 @@
             var selEl = document.querySelector('#' + key + 'BadgeSel');
             if (!selEl) return;
             selEl.addEventListener('change', function() { loadOverrideValues(key, selEl.value); });
+            ['BgColor', 'BgOpacity', 'TextColor', 'CornerRadius'].forEach(function(f) {
+                document.querySelector('#' + key + f).addEventListener('change', function() {
+                    saveCurrentOverride(key);
+                    refreshBadgeSelLabels(key);
+                });
+            });
+            var resetEl = document.querySelector('#' + key + 'ResetText');
+            if (resetEl) resetEl.addEventListener('click', function() { resetTextOverride(key); });
         }
 
         function setupLangShowModeToggle(prefix) {
@@ -629,6 +669,7 @@
             q(k + 'TextColor').value = g.textColor;
             q(k + 'CornerRadius').value = g.cornerRadius;
             if (q(k + 'BadgeSel')) q(k + 'BadgeSel').value = '__global__';
+            refreshBadgeSelLabels(k);
         }
 
         function loadLangConfig(prefix, lc, itc) {
@@ -845,6 +886,8 @@
         var allBadgeKeys = [
             {key:'4k',label:'4K'},{key:'1080p',label:'1080p'},{key:'720p',label:'720p'},{key:'sd',label:'SD'},
             {key:'hdr10',label:'HDR10'},{key:'hdr10plus',label:'HDR10+'},{key:'dv',label:'Dolby Vision'},{key:'hlg',label:'HLG'},
+            {key:'dvp5',label:'DV P5'},{key:'dvp7',label:'DV P7'},{key:'dvp8.1',label:'DV P8.1'},{key:'dvp8.2',label:'DV P8.2'},{key:'dvp8.4',label:'DV P8.4'},
+            {key:'dvp10.0',label:'DV P10.0'},{key:'dvp10.1',label:'DV P10.1'},{key:'dvp10.2',label:'DV P10.2'},{key:'dvp10.4',label:'DV P10.4'},
             {key:'atmos',label:'Atmos'},{key:'dtsx',label:'DTS:X'},{key:'truehd',label:'TrueHD'},{key:'dtshdma',label:'DTS-HD MA'},
             {key:'5.1',label:'5.1'},{key:'7.1',label:'7.1'},{key:'stereo',label:'Stereo'},
             {key:'h264',label:'H.264'},{key:'hevc',label:'HEVC'},{key:'av1',label:'AV1'},{key:'vp9',label:'VP9'}

@@ -23,7 +23,7 @@ public class DetectFormatsTests
     };
 
     private static string Hdr(MediaStream stream) =>
-        string.Join(",", QualityDetectionService.DetectHdr(stream).Select(b => b.BadgeKey));
+        string.Join(",", QualityDetectionService.DetectHdr(stream).Select(b => b.DisplayText ?? b.BadgeKey));
 
     [Theory]
     [InlineData("bt709", "")]
@@ -41,15 +41,23 @@ public class DetectFormatsTests
     }
 
     // #33: Dolby Vision comes with its base layer, best first for the "Highest" mode.
+    // #30: then its profile, an optional text badge.
     [Theory]
-    [InlineData(Pq, 5, 0, false, "dv")]                 // profile 5: no base layer to show
-    [InlineData(Pq, 8, 1, false, "dv,hdr10")]           // 8.1
-    [InlineData(Pq, 8, 1, true, "dv,hdr10plus")]        // 8.1 with HDR10+ metadata
-    [InlineData(Hlg, 8, 4, false, "dv,hlg")]            // 8.4
-    [InlineData(Pq, 7, 6, false, "dv,hdr10")]           // 7, base layer HDR10
+    [InlineData(Pq, 5, 0, false, "dv,DV P5")]                   // no base layer to show
+    [InlineData(Pq, 8, 1, false, "dv,DV P8.1,hdr10")]
+    [InlineData(Pq, 8, 1, true, "dv,DV P8.1,hdr10plus")]        // with HDR10+ metadata
+    [InlineData(Hlg, 8, 4, false, "dv,DV P8.4,hlg")]
+    [InlineData(Pq, 7, 6, false, "dv,DV P7,hdr10")]             // base layer HDR10
     public void DolbyVision_WithItsBaseLayer(string transfer, int profile, int compatId, bool hdr10Plus, string expected)
     {
         Assert.Equal(expected, Hdr(Video(transfer, profile, compatId, hdr10Plus)));
+    }
+
+    [Fact]
+    public void DolbyVisionProfile_UsesItsImage()
+    {
+        var badge = QualityDetectionService.DetectHdr(Video(Pq, 8, 1)).Single(b => b.BadgeKey == "dvprofile");
+        Assert.Equal("badge-dvp8_1.svg", badge.ResourceFileName);
     }
 
     private static string Audio(string codec, string profile, int channels) =>

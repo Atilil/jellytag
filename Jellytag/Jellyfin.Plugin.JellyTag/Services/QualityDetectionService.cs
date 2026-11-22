@@ -273,7 +273,7 @@ public class QualityDetectionService : IQualityDetectionService
         return badge.Category switch
         {
             BadgeCategory.Resolution => badge.BadgeKey switch { "4k" => 0, "1080p" => 1, "720p" => 2, "sd" => 3, _ => 4 },
-            BadgeCategory.Hdr => badge.BadgeKey switch { "dv" => 0, "hdr10plus" => 1, "hlg" => 2, "hdr10" => 3, _ => 4 },
+            BadgeCategory.Hdr => badge.BadgeKey switch { "dv" => 0, "dvprofile" => 1, "hdr10plus" => 2, "hlg" => 3, "hdr10" => 4, _ => 5 },
             BadgeCategory.ThreeD => 10,
             BadgeCategory.Audio => badge.BadgeKey switch
             {
@@ -467,6 +467,31 @@ public class QualityDetectionService : IQualityDetectionService
     }
 
     /// <summary>
+    /// Formats a Dolby Vision profile as "DV P5", "DV P7" or "DV P8.1". Profiles 8 and 10 come in
+    /// variants named after the base layer compatibility ID (1 = HDR10, 2 = SDR, 4 = HLG).
+    /// FEL and MEL (profile 7) are not exposed by Jellyfin.
+    /// </summary>
+    internal static readonly string[] KnownDvProfiles = ["5", "7", "8.1", "8.2", "8.4", "10.0", "10.1", "10.2", "10.4"];
+
+    /// <summary>
+    /// "DV P8.1" -> "badge-dvp8_1.svg". A profile without its SVG is drawn as text.
+    /// </summary>
+    internal static string DvProfileFileName(string profileText) =>
+        $"badge-dvp{profileText["DV P".Length..].Replace('.', '_')}.svg";
+
+    internal static string? FormatDvProfile(int? profile, int? compatibilityId)
+    {
+        if (profile is not > 0)
+        {
+            return null;
+        }
+
+        return profile is 8 or 10 && compatibilityId is not null
+            ? $"DV P{profile}.{compatibilityId}"
+            : $"DV P{profile}";
+    }
+
+    /// <summary>
     /// Dolby Vision is a layer on top of a base format (HDR10, HDR10+, HLG): both are returned,
     /// the panel's "Highest" mode then keeps only Dolby Vision.
     /// </summary>
@@ -484,6 +509,19 @@ public class QualityDetectionService : IQualityDetectionService
             or VideoRangeType.DOVIWithELHDR10Plus)
         {
             badges.Add(new BadgeInfo { Category = BadgeCategory.Hdr, BadgeKey = "dv", ResourceFileName = "badge-dv.svg" });
+
+            // Optional badge (off by default): the profile, e.g. "DV P8.1" from badge-dvp8_1.svg.
+            var profile = FormatDvProfile(videoStream.DvProfile, videoStream.DvBlSignalCompatibilityId);
+            if (profile != null)
+            {
+                badges.Add(new BadgeInfo
+                {
+                    Category = BadgeCategory.Hdr,
+                    BadgeKey = "dvprofile",
+                    ResourceFileName = DvProfileFileName(profile),
+                    DisplayText = profile
+                });
+            }
         }
 
         if (rangeType is VideoRangeType.HDR10Plus or VideoRangeType.DOVIWithHDR10Plus or VideoRangeType.DOVIWithELHDR10Plus)

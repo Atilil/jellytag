@@ -369,7 +369,7 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
                     if (!string.IsNullOrEmpty(fallbackText))
                     {
                         var fbHeight = Math.Max(1, (int)(badgeWidth * 0.5));
-                        var textBadge = new BadgeInfo { Category = badgeInfo.Category, BadgeKey = badgeInfo.BadgeKey, ResourceFileName = string.Empty };
+                        var textBadge = new BadgeInfo { Category = badgeInfo.Category, BadgeKey = badgeInfo.BadgeKey, ResourceFileName = string.Empty, DisplayText = badgeInfo.DisplayText };
                         filtered.Add(textBadge);
                         sizes.Add(new SKSizeI(badgeWidth, fbHeight));
                     }
@@ -391,7 +391,7 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
                     if (!string.IsNullOrEmpty(fallbackText))
                     {
                         var fbHeight = Math.Max(1, (int)(badgeWidth * 0.5));
-                        var textBadge = new BadgeInfo { Category = badgeInfo.Category, BadgeKey = badgeInfo.BadgeKey, ResourceFileName = string.Empty };
+                        var textBadge = new BadgeInfo { Category = badgeInfo.Category, BadgeKey = badgeInfo.BadgeKey, ResourceFileName = string.Empty, DisplayText = badgeInfo.DisplayText };
                         filtered.Add(textBadge);
                         sizes.Add(new SKSizeI(badgeWidth, fbHeight));
                     }
