@@ -77,15 +77,14 @@ public partial class ImageOverlayMiddleware
             return;
         }
 
-        // Check if item's library is excluded
-        if (config.ExcludedLibraryIds.Count > 0)
+        // Items outside every library (intros added by plugins such as Local Intros) are not
+        // media to badge; so are items of an excluded library.
+        var collectionFolders = libraryManager.GetCollectionFolders(item);
+        if (collectionFolders.Count == 0
+            || collectionFolders.Any(f => config.ExcludedLibraryIds.Contains(f.Id.ToString("N"))))
         {
-            var collectionFolders = libraryManager.GetCollectionFolders(item);
-            if (collectionFolders.Any(f => config.ExcludedLibraryIds.Contains(f.Id.ToString("N"))))
-            {
-                await _next(context).ConfigureAwait(false);
-                return;
-            }
+            await _next(context).ConfigureAwait(false);
+            return;
         }
 
         var imageConfig = GetImageTypeConfig(config, imageType, item);
