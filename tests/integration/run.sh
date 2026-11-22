@@ -177,6 +177,17 @@ served "$id" >/dev/null
 check "subtitle panel: all subtitle languages" "$(sorted <<<1080p_h264_stereo_subeng_subfra)" "$(badges "$title")"
 config '.PosterConfig.LanguagePanel.LanguageFilter = "All" | .PosterConfig.SubtitlePanel.SubtitlesWithoutAudioOnly = true'
 
+# --- Centered position (#22): the resolution badge moves, moving it back restores the poster
+
+title="JT 4K"
+id=$(item "$title")
+position=$(api GET "/Plugins/$plugin/Configuration" | jq -r .PosterConfig.ResolutionPanel.Position)
+config '.PosterConfig.ResolutionPanel.Position = "TopCenter"'
+check "centered position: saved" TopCenter "$(api GET "/Plugins/$plugin/Configuration" | jq -r .PosterConfig.ResolutionPanel.Position)"
+check "centered position: poster drawn again" true "$([[ $(served "$id") != "${rendered[$title]}" ]] && echo true || echo false)"
+config ".PosterConfig.ResolutionPanel.Position = \"$position\""
+check "centered position: previous poster back" "${rendered[$title]}" "$(served "$id")"
+
 # --- Custom flag: an uploaded flag-eng replaces the English flag, deleting it restores the default
 
 title="JT 4K"

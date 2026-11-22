@@ -242,11 +242,7 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
 
             // Calculate positions: panels at the same position stack on top of each other in Order order
             // Track cumulative vertical extent per position corner
-            var priorExtents = new Dictionary<BadgePosition, int>
-            {
-                { BadgePosition.TopLeft, 0 }, { BadgePosition.TopRight, 0 },
-                { BadgePosition.BottomLeft, 0 }, { BadgePosition.BottomRight, 0 }
-            };
+            var priorExtents = Enum.GetValues<BadgePosition>().ToDictionary(p => p, _ => 0);
 
             foreach (var group in allPanelGroups)
             {
@@ -731,10 +727,10 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
     }
 
     private static bool ShouldReverseOrder(BadgeLayout layout, BadgePosition position) =>
-        (layout == BadgeLayout.Vertical && (position == BadgePosition.BottomLeft || position == BadgePosition.BottomRight))
+        (layout == BadgeLayout.Vertical && position is BadgePosition.BottomLeft or BadgePosition.BottomRight or BadgePosition.BottomCenter)
         || (layout == BadgeLayout.Horizontal && (position == BadgePosition.TopRight || position == BadgePosition.BottomRight));
 
-    private static List<SKPointI> CalculateStackedPositions(
+    internal static List<SKPointI> CalculateStackedPositions(
         int imageWidth, int imageHeight,
         List<SKSizeI> badges,
         BadgePosition position, int margin, int gap,
@@ -743,69 +739,43 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
         var positions = new List<SKPointI>();
         if (badges.Count == 0) return positions;
 
+        var bottom = position is BadgePosition.BottomLeft or BadgePosition.BottomRight or BadgePosition.BottomCenter;
+
+        // X of a block of the given width: margin from its edge, or centered (no margin).
+        int BlockX(int blockWidth) => position switch
+        {
+            BadgePosition.TopRight or BadgePosition.BottomRight => Math.Max(0, imageWidth - blockWidth - margin),
+            BadgePosition.TopCenter or BadgePosition.BottomCenter => Math.Max(0, (imageWidth - blockWidth) / 2),
+            _ => margin
+        };
+
+        int StartY(int blockHeight) => bottom
+            ? Math.Max(0, imageHeight - blockHeight - margin - priorExtent)
+            : margin + priorExtent;
+
         if (layout == BadgeLayout.Horizontal)
         {
             var totalWidth = badges.Sum(b => b.Width) + (badges.Count - 1) * gap;
             var maxHeight = badges.Max(b => b.Height);
+            var startY = StartY(maxHeight);
 
-            int startX, startY;
-            switch (position)
+            var currentX = BlockX(totalWidth);
+            foreach (var badge in badges)
             {
-                case BadgePosition.TopLeft:
-                    startX = margin; startY = margin + priorExtent; break;
-                case BadgePosition.TopRight:
-                    startX = Math.Max(0, imageWidth - totalWidth - margin); startY = margin + priorExtent; break;
-                case BadgePosition.BottomLeft:
-                    startX = margin; startY = Math.Max(0, imageHeight - maxHeight - margin - priorExtent); break;
-                case BadgePosition.BottomRight:
-                    startX = Math.Max(0, imageWidth - totalWidth - margin); startY = Math.Max(0, imageHeight - maxHeight - margin - priorExtent); break;
-                default:
-                    startX = margin; startY = margin + priorExtent; break;
-            }
-
-            var currentX = startX;
-            for (int i = 0; i < badges.Count; i++)
-            {
-                var yOffset = (maxHeight - badges[i].Height) / 2;
+                var yOffset = (maxHeight - badge.Height) / 2;
                 positions.Add(new SKPointI(currentX, startY + yOffset));
-                currentX += badges[i].Width + gap;
+                currentX += badge.Width + gap;
             }
         }
         else
         {
             var totalHeight = badges.Sum(b => b.Height) + (badges.Count - 1) * gap;
-            var maxWidth = badges.Max(b => b.Width);
-
-            int startX, startY;
-            switch (position)
+            var currentY = StartY(totalHeight);
+            foreach (var badge in badges)
             {
-                case BadgePosition.TopLeft:
-                    startX = margin; startY = margin + priorExtent; break;
-                case BadgePosition.TopRight:
-                    startX = Math.Max(0, imageWidth - maxWidth - margin); startY = margin + priorExtent; break;
-                case BadgePosition.BottomLeft:
-                    startX = margin; startY = Math.Max(0, imageHeight - totalHeight - margin - priorExtent); break;
-                case BadgePosition.BottomRight:
-                    startX = Math.Max(0, imageWidth - maxWidth - margin); startY = Math.Max(0, imageHeight - totalHeight - margin - priorExtent); break;
-                default:
-                    startX = margin; startY = margin + priorExtent; break;
-            }
-
-            var currentY = startY;
-            for (int i = 0; i < badges.Count; i++)
-            {
-                int x;
-                if (position == BadgePosition.TopRight || position == BadgePosition.BottomRight)
-                {
-                    x = Math.Max(0, imageWidth - badges[i].Width - margin);
-                }
-                else
-                {
-                    x = startX;
-                }
-
-                positions.Add(new SKPointI(x, currentY));
-                currentY += badges[i].Height + gap;
+                // Each badge of a column is aligned on its own width.
+                positions.Add(new SKPointI(BlockX(badge.Width), currentY));
+                currentY += badge.Height + gap;
             }
         }
 
