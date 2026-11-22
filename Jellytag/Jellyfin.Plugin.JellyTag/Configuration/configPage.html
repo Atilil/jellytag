@@ -232,7 +232,8 @@
             Hdr: {
                 title: 'HDR / 3D Badges',
                 badges: [{id:'Hdr10',key:'hdr10',label:'HDR10'},{id:'Hdr10Plus',key:'hdr10plus',label:'HDR10+'},{id:'DV',key:'dv',label:'Dolby Vision'},{id:'HLG',key:'hlg',label:'HLG'},{id:'GenericHdr',key:'hdr',label:'Generic HDR'},{id:'3D',key:'3d',label:'3D'}],
-                hasShowMode: false
+                hasShowMode: true,
+                showModeOptions: [{v:'Highest',l:'Highest only'},{v:'All',l:'All'}]
             },
             Codec: {
                 title: 'Codec Badges',
@@ -537,7 +538,7 @@
             if (!resEn || !resShow) return;
             function update() {
                 var mode = resEn.checked ? resShow.value : 'All';
-                ['Hdr', 'Codec'].forEach(function(pid) {
+                ['Codec'].forEach(function(pid) {
                     var el = document.querySelector('#' + prefix + pid + 'ShowMode');
                     if (el) el.value = mode;
                 });
@@ -548,7 +549,7 @@
 
         function setupThumbShowHideLayout(prefix) {
             if (prefix !== 'Thumb') return;
-            ['Res', 'Hdr', 'Codec'].forEach(function(pid) {
+            ['Res', 'Codec'].forEach(function(pid) {
                 var showEl = document.querySelector('#' + prefix + pid + 'ShowMode');
                 if (!showEl && pid !== 'Res') return;
                 var effectiveShow = function() {

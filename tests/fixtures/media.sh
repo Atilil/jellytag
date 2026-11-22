@@ -46,3 +46,13 @@ mkdir -p "$dir"
 [[ -f "$dir/poster.jpg" ]] || ff -f lavfi -i "testsrc2=size=1000x1500" -frames:v 1 "$dir/poster.jpg"
 printf '<?xml version="1.0" encoding="utf-8" standalone="yes"?>\n<movie>\n  <title>JT Default</title>\n  <year>2024</year>\n</movie>\n' \
     >"$dir/JT Default (2024).nfo"
+# Two badges in the HDR panel: HDR10 from the HEVC color metadata, 3D from the file name.
+dir="$media/JT HDR 3D (2024)"
+mkdir -p "$dir"
+[[ -f "$dir/JT HDR 3D (2024).3D.HSBS.mkv" ]] || ff -f lavfi -i "testsrc=duration=2:size=1920x1080:rate=24" \
+    -f lavfi -i "anullsrc=channel_layout=stereo:sample_rate=48000" -t 2 \
+    -c:v libx265 -pix_fmt yuv420p10le -x265-params log-level=error:colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc \
+    -c:a aac -metadata:s:a:0 language=eng "$dir/JT HDR 3D (2024).3D.HSBS.mkv"
+[[ -f "$dir/poster.jpg" ]] || ff -f lavfi -i "testsrc2=size=1000x1500" -frames:v 1 "$dir/poster.jpg"
+printf '<?xml version="1.0" encoding="utf-8" standalone="yes"?>\n<movie>\n  <title>JT HDR 3D</title>\n  <year>2024</year>\n</movie>\n' \
+    >"$dir/movie.nfo"

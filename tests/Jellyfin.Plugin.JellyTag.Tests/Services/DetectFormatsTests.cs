@@ -1,0 +1,72 @@
+using Jellyfin.Plugin.JellyTag.Services;
+using MediaBrowser.Model.Entities;
+
+namespace Jellyfin.Plugin.JellyTag.Tests.Services;
+
+// Streams carry the fields ffprobe fills; Jellyfin derives VideoRangeType from them.
+public class DetectFormatsTests
+{
+    private const string Pq = "smpte2084";
+    private const string Hlg = "arib-std-b67";
+
+    private static MediaStream Video(string transfer, int? dvProfile = null, int? dvCompatId = null, bool hdr10Plus = false) => new()
+    {
+        Type = MediaStreamType.Video,
+        ColorTransfer = transfer,
+        ColorSpace = "bt2020nc",
+        ColorPrimaries = "bt2020",
+        DvProfile = dvProfile,
+        DvBlSignalCompatibilityId = dvCompatId,
+        RpuPresentFlag = dvProfile is null ? null : 1,
+        BlPresentFlag = dvProfile is null ? null : 1,
+        Hdr10PlusPresentFlag = hdr10Plus
+    };
+
+    private static string Hdr(MediaStream stream) =>
+        string.Join(",", QualityDetectionService.DetectHdr(stream).Select(b => b.BadgeKey));
+
+    [Theory]
+    [InlineData("bt709", "")]
+    [InlineData(Pq, "hdr10")]
+    [InlineData(Hlg, "hlg")]
+    public void HdrWithoutDolbyVision(string transfer, string expected)
+    {
+        Assert.Equal(expected, Hdr(Video(transfer)));
+    }
+
+    [Fact]
+    public void HdrTenPlus()
+    {
+        Assert.Equal("hdr10plus", Hdr(Video(Pq, hdr10Plus: true)));
+    }
+
+    // #33: Dolby Vision comes with its base layer, best first for the "Highest" mode.
+    [Theory]
+    [InlineData(Pq, 5, 0, false, "dv")]                 // profile 5: no base layer to show
+    [InlineData(Pq, 8, 1, false, "dv,hdr10")]           // 8.1
+    [InlineData(Pq, 8, 1, true, "dv,hdr10plus")]        // 8.1 with HDR10+ metadata
+    [InlineData(Hlg, 8, 4, false, "dv,hlg")]            // 8.4
+    [InlineData(Pq, 7, 6, false, "dv,hdr10")]           // 7, base layer HDR10
+    public void DolbyVision_WithItsBaseLayer(string transfer, int profile, int compatId, bool hdr10Plus, string expected)
+    {
+        Assert.Equal(expected, Hdr(Video(transfer, profile, compatId, hdr10Plus)));
+    }
+
+    private static string Audio(string codec, string profile, int channels) =>
+        string.Join(",", QualityDetectionService.DetectAudio(
+            [new MediaStream { Type = MediaStreamType.Audio, Codec = codec, Profile = profile, Channels = channels }])
+            .Select(b => b.BadgeKey));
+
+    // #19: Atmos and DTS:X are shown with the codec that carries them.
+    [Theory]
+    [InlineData("truehd", "Dolby TrueHD + Dolby Atmos", 8, "atmos,truehd,7.1")]
+    [InlineData("truehd", "", 8, "truehd,7.1")]
+    [InlineData("eac3", "Dolby Digital Plus + Dolby Atmos", 6, "atmos,5.1")]
+    [InlineData("dts", "DTS-HD MA + DTS:X", 8, "dtsx,dtshdma,7.1")]
+    [InlineData("dts", "DTS-HD MA", 6, "dtshdma,5.1")]
+    [InlineData("aac", "LC", 2, "stereo")]
+    public void AudioFormats(string codec, string profile, int channels, string expected)
+    {
+        Assert.Equal(expected, Audio(codec, profile, channels));
+    }
+}

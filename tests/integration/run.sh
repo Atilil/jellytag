@@ -86,7 +86,7 @@ api POST "/Library/VirtualFolders?name=movies&collectionType=movies&paths=/media
 api POST /Library/Refresh
 
 scan_done() {
-    [[ $(api GET "/Items?Recursive=true&IncludeItemTypes=Movie" | jq .TotalRecordCount) == 10 ]] &&
+    [[ $(api GET "/Items?Recursive=true&IncludeItemTypes=Movie" | jq .TotalRecordCount) == 11 ]] &&
         api GET /ScheduledTasks | jq -e '.[] | select(.Key == "RefreshLibrary") | .State == "Idle"'
 }
 wait_for 180 "the library scan" scan_done
@@ -116,6 +116,7 @@ declare -A expected=(
     ["JT Long"]=sd_h264_stereo_eng
     ["JT Multi"]=4k_1080p_h264_5.1_stereo_eng_fra
     ["JT Default"]=1080p_h264_stereo_deu_eng_jpn
+    ["JT HDR 3D"]=1080p_hevc_hdr10_3d_stereo_eng
 )
 declare -A rendered
 for title in "${!expected[@]}"; do
@@ -133,7 +134,7 @@ check "JT Default: default audio language first" jpn_deu_eng "$(languages "JT De
 
 title="JT 4K"
 id=$(item "$title")
-check "cache: one rendered image per poster" 10 "$(api GET /JellyTag/CacheStats | jq .FileCount)"
+check "cache: one rendered image per poster" 11 "$(api GET /JellyTag/CacheStats | jq .FileCount)"
 check "cache: same image on the next request" "${rendered[$title]}" "$(served "$id")"
 
 plugin=$(api GET /Plugins | jq -r '.[] | select(.Name == "JellyTag") | .Id')
@@ -146,6 +147,15 @@ id=$(item "$title")
 before=${rendered[$title]}
 check "runtime: poster rendered again" true "$([[ $(served "$id") != "$before" ]] && echo true || echo false)"
 check "runtime: badge added" "$(sorted <<<"${expected[$title]}_runtime")" "$(badges "$title")"
+
+# --- HDR panel: "Highest only" (default) draws HDR10 alone, "All" adds the 3D badge
+
+api POST "/Plugins/$plugin/Configuration" "$(api GET "/Plugins/$plugin/Configuration" | jq -c '.PosterConfig.HdrPanel.ShowMode = "All"')"
+title="JT HDR 3D"
+check "hdr panel all: second badge drawn" true "$([[ $(served "$(item "$title")") != "${rendered[$title]}" ]] && echo true || echo false)"
+title="JT 1080p"
+check "hdr panel all: poster without HDR unchanged" "${rendered[$title]}" "$(served "$(item "$title")")"
+
 title="JT 4K"
 id=$(item "$title")
 api POST "/Plugins/$plugin/Configuration" "$(api GET "/Plugins/$plugin/Configuration" | jq -c '.Enabled = false')"

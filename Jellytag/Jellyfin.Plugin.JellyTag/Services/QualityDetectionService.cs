@@ -306,11 +306,7 @@ public class QualityDetectionService : IQualityDetectionService
             }
 
             // HDR detection - always detect, filtering happens in ShouldShowBadge
-            var hdrBadge = DetectHdr(videoStream);
-            if (hdrBadge != null)
-            {
-                badges.Add(hdrBadge);
-            }
+            badges.AddRange(DetectHdr(videoStream));
 
             // Video codec detection
             var codec = videoStream.Codec?.ToLowerInvariant() ?? string.Empty;
@@ -470,11 +466,15 @@ public class QualityDetectionService : IQualityDetectionService
         return badges;
     }
 
-    private static BadgeInfo? DetectHdr(MediaStream videoStream)
+    /// <summary>
+    /// Dolby Vision is a layer on top of a base format (HDR10, HDR10+, HLG): both are returned,
+    /// the panel's "Highest" mode then keeps only Dolby Vision.
+    /// </summary>
+    internal static List<BadgeInfo> DetectHdr(MediaStream videoStream)
     {
+        var badges = new List<BadgeInfo>();
         var rangeType = videoStream.VideoRangeType;
 
-        // Dolby Vision variants (highest priority)
         if (rangeType is VideoRangeType.DOVI
             or VideoRangeType.DOVIWithHDR10
             or VideoRangeType.DOVIWithHLG
@@ -483,37 +483,37 @@ public class QualityDetectionService : IQualityDetectionService
             or VideoRangeType.DOVIWithHDR10Plus
             or VideoRangeType.DOVIWithELHDR10Plus)
         {
-            return new BadgeInfo { Category = BadgeCategory.Hdr, BadgeKey = "dv", ResourceFileName = "badge-dv.svg" };
+            badges.Add(new BadgeInfo { Category = BadgeCategory.Hdr, BadgeKey = "dv", ResourceFileName = "badge-dv.svg" });
         }
 
-        if (rangeType == VideoRangeType.HDR10Plus)
+        if (rangeType is VideoRangeType.HDR10Plus or VideoRangeType.DOVIWithHDR10Plus or VideoRangeType.DOVIWithELHDR10Plus)
         {
-            return new BadgeInfo { Category = BadgeCategory.Hdr, BadgeKey = "hdr10plus", ResourceFileName = "badge-hdr10plus.svg" };
+            badges.Add(new BadgeInfo { Category = BadgeCategory.Hdr, BadgeKey = "hdr10plus", ResourceFileName = "badge-hdr10plus.svg" });
         }
-
-        if (rangeType == VideoRangeType.HLG)
+        else if (rangeType is VideoRangeType.HLG or VideoRangeType.DOVIWithHLG)
         {
-            return new BadgeInfo { Category = BadgeCategory.Hdr, BadgeKey = "hlg", ResourceFileName = "badge-hlg.svg" };
+            badges.Add(new BadgeInfo { Category = BadgeCategory.Hdr, BadgeKey = "hlg", ResourceFileName = "badge-hlg.svg" });
         }
-
-        if (rangeType == VideoRangeType.HDR10)
+        else if (rangeType is VideoRangeType.HDR10 or VideoRangeType.DOVIWithHDR10 or VideoRangeType.DOVIWithEL)
         {
-            return new BadgeInfo { Category = BadgeCategory.Hdr, BadgeKey = "hdr10", ResourceFileName = "badge-hdr10.svg" };
+            badges.Add(new BadgeInfo { Category = BadgeCategory.Hdr, BadgeKey = "hdr10", ResourceFileName = "badge-hdr10.svg" });
         }
-
-        if (videoStream.VideoRange == VideoRange.HDR)
+        else if (badges.Count == 0 && videoStream.VideoRange == VideoRange.HDR)
         {
-            return new BadgeInfo { Category = BadgeCategory.Hdr, BadgeKey = "hdr", ResourceFileName = "badge-hdr.svg" };
+            badges.Add(new BadgeInfo { Category = BadgeCategory.Hdr, BadgeKey = "hdr", ResourceFileName = "badge-hdr.svg" });
         }
 
-        return null;
+        return badges;
     }
 
-    private static List<BadgeInfo> DetectAudio(IEnumerable<MediaStream> audioStreams)
+    /// <summary>
+    /// Atmos and DTS:X are extensions carried by a base codec (TrueHD, DTS-HD MA): each format
+    /// found is returned, the panel's "Highest" mode then keeps only the best one.
+    /// </summary>
+    internal static List<BadgeInfo> DetectAudio(IEnumerable<MediaStream> audioStreams)
     {
         var badges = new List<BadgeInfo>();
-        BadgeInfo? codecBadge = null;
-        int codecPriority = -1;
+        var formats = new HashSet<string>();
         int bestChannels = 0;
 
         foreach (var stream in audioStreams)
@@ -524,38 +524,18 @@ public class QualityDetectionService : IQualityDetectionService
 
             if (channels > bestChannels) bestChannels = channels;
 
-            int priority = -1;
-            BadgeInfo? candidate = null;
-
-            if (profile.Contains("ATMOS"))
-            {
-                priority = 7;
-                candidate = new BadgeInfo { Category = BadgeCategory.Audio, BadgeKey = "atmos", ResourceFileName = "badge-atmos.svg" };
-            }
-            else if (codec == "TRUEHD")
-            {
-                priority = 6;
-                candidate = new BadgeInfo { Category = BadgeCategory.Audio, BadgeKey = "truehd", ResourceFileName = "badge-truehd.svg" };
-            }
-            else if (profile.Contains("DTS:X") || profile.Contains("DTS-X") || profile.Contains("DTSX"))
-            {
-                priority = 5;
-                candidate = new BadgeInfo { Category = BadgeCategory.Audio, BadgeKey = "dtsx", ResourceFileName = "badge-dtsx.svg" };
-            }
-            else if (profile.Contains("DTS-HD MA") || profile.Contains("DTS-HD MASTER") || (codec == "DTS" && profile.Contains("MA")))
-            {
-                priority = 4;
-                candidate = new BadgeInfo { Category = BadgeCategory.Audio, BadgeKey = "dtshdma", ResourceFileName = "badge-dtshdma.svg" };
-            }
-
-            if (candidate != null && priority > codecPriority)
-            {
-                codecPriority = priority;
-                codecBadge = candidate;
-            }
+            if (profile.Contains("ATMOS")) formats.Add("atmos");
+            if (codec == "TRUEHD") formats.Add("truehd");
+            if (profile.Contains("DTS:X") || profile.Contains("DTS-X") || profile.Contains("DTSX")) formats.Add("dtsx");
+            if (profile.Contains("DTS-HD MA") || profile.Contains("DTS-HD MASTER") || (codec == "DTS" && profile.Contains("MA")))
+                formats.Add("dtshdma");
         }
 
-        if (codecBadge != null) badges.Add(codecBadge);
+        foreach (var key in new[] { "atmos", "truehd", "dtsx", "dtshdma" }.Where(formats.Contains))
+        {
+            badges.Add(new BadgeInfo { Category = BadgeCategory.Audio, BadgeKey = key, ResourceFileName = $"badge-{key}.svg" });
+        }
+
 
         if (bestChannels >= 8)
             badges.Add(new BadgeInfo { Category = BadgeCategory.Audio, BadgeKey = "7.1", ResourceFileName = "badge-7_1.svg" });
