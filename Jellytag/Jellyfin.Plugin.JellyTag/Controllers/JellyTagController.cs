@@ -26,6 +26,15 @@ public partial class JellyTagController : ControllerBase
     private static partial Regex SafeBadgeKeyRegex();
 
     /// <summary>
+    /// File name without extension of a badge, as the overlay service loads it:
+    /// flags keep their key ("flag-eng"), other badges get a prefix ("5.1" -> "badge-5_1").
+    /// </summary>
+    private static string BadgeFileStem(string badgeKey) =>
+        badgeKey.StartsWith("flag-", StringComparison.OrdinalIgnoreCase)
+            ? badgeKey.ToLowerInvariant()
+            : "badge-" + badgeKey.Replace('.', '_');
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="JellyTagController"/> class.
     /// </summary>
     public JellyTagController(IImageCacheService cacheService, IImageOverlayService overlayService, IQualityDetectionService qualityService)
@@ -198,17 +207,17 @@ public partial class JellyTagController : ControllerBase
         Directory.CreateDirectory(customDir);
 
         // Delete existing custom badges for this key (all extensions)
-        var fileKey = badgeKey.Replace('.', '_');
+        var stem = BadgeFileStem(badgeKey);
         foreach (var ext in SupportedBadgeExtensions)
         {
-            var existing = Path.Combine(customDir, $"badge-{fileKey}{ext}");
+            var existing = Path.Combine(customDir, stem + ext);
             if (System.IO.File.Exists(existing))
             {
                 System.IO.File.Delete(existing);
             }
         }
 
-        var fileName = $"badge-{fileKey}{extension}";
+        var fileName = stem + extension;
         var filePath = Path.Combine(customDir, fileName);
 
         using (var stream = new FileStream(filePath, FileMode.Create))
@@ -243,13 +252,13 @@ public partial class JellyTagController : ControllerBase
             return NotFound();
         }
 
-        var fileKey = badgeKey.Replace('.', '_');
+        var stem = BadgeFileStem(badgeKey);
         var customDir = Path.Combine(dataFolder, "custom-badges");
         var found = false;
 
         foreach (var ext in SupportedBadgeExtensions)
         {
-            var filePath = Path.Combine(customDir, $"badge-{fileKey}{ext}");
+            var filePath = Path.Combine(customDir, stem + ext);
             if (System.IO.File.Exists(filePath))
             {
                 System.IO.File.Delete(filePath);
@@ -269,7 +278,7 @@ public partial class JellyTagController : ControllerBase
     }
 
     /// <summary>
-    /// Lists all custom badge overrides.
+    /// Lists all custom badge overrides, as file stems ("badge-5_1", "flag-eng").
     /// </summary>
     [HttpGet("CustomBadges")]
     [Authorize(Policy = "RequiresElevation")]
@@ -288,13 +297,25 @@ public partial class JellyTagController : ControllerBase
             return Ok(Array.Empty<string>());
         }
 
-        var files = Directory.GetFiles(customDir, "badge-*.*")
+        var files = Directory.GetFiles(customDir)
             .Where(f => SupportedBadgeExtensions.Contains(Path.GetExtension(f).ToLowerInvariant()))
-            .Select(f => Path.GetFileNameWithoutExtension(f).Replace("badge-", string.Empty))
+            .Select(Path.GetFileNameWithoutExtension)
+            .Where(stem => stem!.StartsWith("badge-", StringComparison.Ordinal) || stem.StartsWith("flag-", StringComparison.Ordinal))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
         return Ok(files);
+    }
+
+    /// <summary>
+    /// Lists the language codes that have a flag, for the custom badge gallery.
+    /// </summary>
+    [HttpGet("Flags")]
+    [Authorize(Policy = "RequiresElevation")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public IActionResult GetFlags()
+    {
+        return Ok(QualityDetectionService.KnownFlagCodes.Order(StringComparer.Ordinal).ToArray());
     }
 
     /// <summary>
@@ -312,8 +333,7 @@ public partial class JellyTagController : ControllerBase
             return BadRequest("Invalid badge key");
         }
 
-        // Normalize dots to underscores for file lookup (e.g. "5.1" -> "5_1")
-        var fileKey = badgeKey.Replace('.', '_');
+        var stem = BadgeFileStem(badgeKey);
 
         // Check custom badges first: SVG > PNG > JPG > JPEG
         var dataFolder = Plugin.Instance?.BadgeFolderPath;
@@ -322,7 +342,7 @@ public partial class JellyTagController : ControllerBase
             var customDir = Path.Combine(dataFolder, "custom-badges");
             foreach (var ext in SupportedBadgeExtensions)
             {
-                var customPath = Path.Combine(customDir, $"badge-{fileKey}{ext}");
+                var customPath = Path.Combine(customDir, stem + ext);
                 if (System.IO.File.Exists(customPath))
                 {
                     var ct = ext switch
@@ -342,7 +362,7 @@ public partial class JellyTagController : ControllerBase
 
         // Try SVG first
         var svgResourceName = resourceNames
-            .FirstOrDefault(r => r.EndsWith($"badge-{fileKey}.svg", StringComparison.OrdinalIgnoreCase));
+            .FirstOrDefault(r => r.EndsWith($".{stem}.svg", StringComparison.OrdinalIgnoreCase));
         if (svgResourceName != null)
         {
             var stream = assembly.GetManifestResourceStream(svgResourceName);
@@ -354,7 +374,7 @@ public partial class JellyTagController : ControllerBase
 
         // Then PNG
         var pngResourceName = resourceNames
-            .FirstOrDefault(r => r.EndsWith($"badge-{fileKey}.png", StringComparison.OrdinalIgnoreCase));
+            .FirstOrDefault(r => r.EndsWith($".{stem}.png", StringComparison.OrdinalIgnoreCase));
         if (pngResourceName != null)
         {
             var stream = assembly.GetManifestResourceStream(pngResourceName);

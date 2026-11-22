@@ -161,6 +161,9 @@
                         <div class="jellytag-section-body">
                             <div class="fieldDescription" style="margin-bottom: 1em;">Click a badge to upload a custom replacement (SVG, PNG or JPEG). Click the reset button to revert to the default.</div>
                             <div id="BadgeGallery" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(120px, 1fr)); gap:12px;"></div>
+                            <h3 style="margin-top: 1.5em;">Language flags</h3>
+                            <div class="fieldDescription" style="margin-bottom: 1em;">Flags are chosen by audio language code, e.g. replace the English flag with the US flag.</div>
+                            <div id="FlagGallery" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(120px, 1fr)); gap:12px;"></div>
                             <input id="CustomBadgeFile" type="file" accept="image/svg+xml,image/png,image/jpeg" style="display:none;" />
                         </div>
                     </details>
@@ -847,37 +850,47 @@
             {key:'h264',label:'H.264'},{key:'hevc',label:'HEVC'},{key:'av1',label:'AV1'},{key:'vp9',label:'VP9'}
         ];
 
+        // Same rule as the server: flags keep their key, other badges get a prefix (5.1 -> badge-5_1).
+        function badgeFileStem(key) {
+            return key.indexOf('flag-') === 0 ? key : 'badge-' + key.replace('.', '_');
+        }
+
+        function addBadgeCard(container, b, customList, token) {
+            var isCustom = customList.indexOf(badgeFileStem(b.key)) >= 0;
+            var card = document.createElement('div'); card.className = 'badge-card' + (isCustom ? ' custom' : '');
+            card.setAttribute('data-badge-key', b.key);
+            var img = document.createElement('img');
+            var previewUrl = ApiClient.getUrl('JellyTag/BadgePreview/' + b.key);
+            img.src = previewUrl + '?t=' + Date.now() + (token ? '&ApiKey=' + token : ''); img.alt = b.label;
+            card.appendChild(img);
+            var lbl = document.createElement('div'); lbl.className = 'badge-label';
+            lbl.textContent = b.label + (isCustom ? ' (custom)' : ''); card.appendChild(lbl);
+            if (isCustom) {
+                var resetBtn = document.createElement('button'); resetBtn.className = 'badge-reset';
+                resetBtn.textContent = '\u00D7'; resetBtn.title = 'Reset to default';
+                resetBtn.addEventListener('click', function(ev) { ev.stopPropagation();
+                    if (confirm('Reset "' + b.label + '" badge to default?')) {
+                        Dashboard.showLoadingMsg();
+                        ApiClient.ajax({type:'DELETE',url:ApiClient.getUrl('JellyTag/CustomBadge/'+b.key)}).then(function(){Dashboard.hideLoadingMsg();loadBadgeGallery();});
+                    }
+                }); card.appendChild(resetBtn);
+            }
+            card.addEventListener('click', function() {
+                var fi = document.querySelector('#CustomBadgeFile'); fi.setAttribute('data-target-key', b.key); fi.click();
+            });
+            container.appendChild(card);
+        }
+
         function loadBadgeGallery() {
-            var url = ApiClient.getUrl('JellyTag/CustomBadges');
             var token = ApiClient.accessToken();
             var headers = {}; if (token) headers['Authorization'] = 'MediaBrowser Token="' + token + '"';
-            fetch(url, {headers:headers}).then(function(r){return r.json();}).then(function(customList) {
+            function getJson(path) { return fetch(ApiClient.getUrl(path), {headers:headers}).then(function(r){return r.json();}); }
+            Promise.all([getJson('JellyTag/CustomBadges'), getJson('JellyTag/Flags')]).then(function(res) {
+                var customList = res[0], flags = res[1];
                 var gallery = document.querySelector('#BadgeGallery'); gallery.innerHTML = '';
-                allBadgeKeys.forEach(function(b) {
-                    var isCustom = customList.indexOf(b.key) >= 0;
-                    var card = document.createElement('div'); card.className = 'badge-card' + (isCustom ? ' custom' : '');
-                    card.setAttribute('data-badge-key', b.key);
-                    var img = document.createElement('img');
-                    var previewUrl = ApiClient.getUrl('JellyTag/BadgePreview/' + b.key);
-                    img.src = previewUrl + '?t=' + Date.now() + (token ? '&ApiKey=' + token : ''); img.alt = b.label;
-                    card.appendChild(img);
-                    var lbl = document.createElement('div'); lbl.className = 'badge-label';
-                    lbl.textContent = b.label + (isCustom ? ' (custom)' : ''); card.appendChild(lbl);
-                    if (isCustom) {
-                        var resetBtn = document.createElement('button'); resetBtn.className = 'badge-reset';
-                        resetBtn.textContent = '\u00D7'; resetBtn.title = 'Reset to default';
-                        resetBtn.addEventListener('click', function(ev) { ev.stopPropagation();
-                            if (confirm('Reset "' + b.label + '" badge to default?')) {
-                                Dashboard.showLoadingMsg();
-                                ApiClient.ajax({type:'DELETE',url:ApiClient.getUrl('JellyTag/CustomBadge/'+b.key)}).then(function(){Dashboard.hideLoadingMsg();loadBadgeGallery();});
-                            }
-                        }); card.appendChild(resetBtn);
-                    }
-                    card.addEventListener('click', function() {
-                        var fi = document.querySelector('#CustomBadgeFile'); fi.setAttribute('data-target-key', b.key); fi.click();
-                    });
-                    gallery.appendChild(card);
-                });
+                allBadgeKeys.forEach(function(b) { addBadgeCard(gallery, b, customList, token); });
+                var flagGallery = document.querySelector('#FlagGallery'); flagGallery.innerHTML = '';
+                flags.forEach(function(code) { addBadgeCard(flagGallery, {key:'flag-' + code, label:code}, customList, token); });
             }).catch(function(err) { console.error('[JellyTag] Badge gallery error:', err); });
         }
 

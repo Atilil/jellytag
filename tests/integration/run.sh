@@ -33,6 +33,12 @@ api() { # METHOD PATH [JSON BODY]
     podman exec "$container" curl "${args[@]}" "http://localhost:8096$2"
 }
 
+upload() { # BADGE_KEY, SVG on stdin
+    local auth="MediaBrowser Client=\"integration\", Device=\"integration\", DeviceId=\"integration\", Version=\"1\", Token=\"$token\""
+    podman exec -i "$container" curl -sSf -X POST -H "Authorization: $auth" \
+        -F "file=@-;type=image/svg+xml;filename=custom.svg" "http://localhost:8096/JellyTag/CustomBadge/$1"
+}
+
 wait_for() { # SECONDS DESCRIPTION COMMAND...
     local deadline=$((SECONDS + $1)) what=$2
     shift 2
@@ -156,8 +162,18 @@ check "hdr panel all: second badge drawn" true "$([[ $(served "$(item "$title")"
 title="JT 1080p"
 check "hdr panel all: poster without HDR unchanged" "${rendered[$title]}" "$(served "$(item "$title")")"
 
+# --- Custom flag: an uploaded flag-eng replaces the English flag, deleting it restores the default
+
 title="JT 4K"
 id=$(item "$title")
+custom='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 90 60"><rect width="90" height="60" fill="#b22234"/></svg>'
+upload flag-eng <<<"$custom"
+check "custom flag: listed" true "$(api GET /JellyTag/CustomBadges | jq 'any(. == "flag-eng")')"
+check "custom flag: preview serves it" "$(md5sum <<<"$custom" | cut -d' ' -f1)" "$(api GET /JellyTag/BadgePreview/flag-eng | md5sum | cut -d' ' -f1)"
+check "custom flag: poster drawn with it" true "$([[ $(served "$id") != "${rendered[$title]}" ]] && echo true || echo false)"
+api DELETE /JellyTag/CustomBadge/flag-eng
+check "custom flag: default flag back" "${rendered[$title]}" "$(served "$id")"
+
 api POST "/Plugins/$plugin/Configuration" "$(api GET "/Plugins/$plugin/Configuration" | jq -c '.Enabled = false')"
 check "disabled: original poster served" "$(original "$title")" "$(served "$id")"
 
