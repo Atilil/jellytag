@@ -41,12 +41,12 @@ public enum BadgeCategory
     Subtitle,
 
     /// <summary>
-    /// Video length badge (e.g. "1h 52m").
+    /// Video length badge.
     /// </summary>
     Runtime,
 
     /// <summary>
-    /// Rating badges stored in the item's metadata (e.g. "7.8/10", "92%").
+    /// Rating badges stored in the item's metadata.
     /// </summary>
     Rating
 }
@@ -67,12 +67,12 @@ public class BadgeInfo
     public string BadgeKey { get; set; } = string.Empty;
 
     /// <summary>
-    /// Gets or sets the embedded resource file name (e.g. "badge-4k.png").
+    /// Gets or sets the embedded resource file name.
     /// </summary>
     public string ResourceFileName { get; set; } = string.Empty;
 
     /// <summary>
-    /// Gets or sets literal text to render for dynamic badges (e.g. "1h 52m"). Takes precedence over key-based text.
+    /// Gets or sets literal text to render for dynamic badges. Takes precedence over key-based text.
     /// </summary>
     public string? DisplayText { get; set; }
 
@@ -80,4 +80,9 @@ public class BadgeInfo
     /// Gets or sets a value indicating whether a subtitle badge's language also has an audio track.
     /// </summary>
     public bool HasMatchingAudio { get; set; }
+
+    /// <summary>
+    /// Embedded image drawn before the text of a text badge (rating badges). Empty for none.
+    /// </summary>
+    public string IconFileName { get; set; } = string.Empty;
 }

@@ -13,13 +13,21 @@ public class DetectRatingsTests
     [Fact]
     public void BothRatings()
     {
-        Assert.Equal("rating=7.8/10,critic=92%", Texts(7.8f, 92f));
+        Assert.Equal("rating=7.8,critic=92%", Texts(7.8f, 92f));
+    }
+
+    // Named like the badge images, so an uploaded custom badge replaces the icon.
+    [Fact]
+    public void Icons_FollowTheBadgeKeys()
+    {
+        var icons = QualityDetectionService.DetectRatings(new Movie { CommunityRating = 7.8f, CriticRating = 92f }).Select(b => b.IconFileName);
+        Assert.Equal(["badge-rating.svg", "badge-critic.svg"], icons);
     }
 
     // One decimal always, with a dot whatever the server culture.
     [Theory]
-    [InlineData(8f, "rating=8.0/10")]
-    [InlineData(7.86f, "rating=7.9/10")]
+    [InlineData(8f, "rating=8.0")]
+    [InlineData(7.86f, "rating=7.9")]
     public void CommunityRating_OneDecimal(float rating, string expected)
     {
         Assert.Equal(expected, Texts(rating, null));

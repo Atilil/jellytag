@@ -127,7 +127,7 @@
                             <div id="ThumbSizeReductionWrap" class="inputContainer hidden">
                                 <label class="inputLabel inputLabelUnfocused" for="ThumbnailSizeReduction">Size reduction (percentage points)</label>
                                 <input id="ThumbnailSizeReduction" type="number" min="0" max="50" step="1" is="emby-input" />
-                                <div class="fieldDescription">Reduce badge size on thumbnails compared to posters (e.g. 10 means a 15% poster badge becomes 5% on thumbnails).</div>
+                                <div class="fieldDescription">Reduce badge size on thumbnails compared to posters.</div>
                             </div>
                             <div id="ThumbFieldsContainer">
                                 <div class="checkboxContainer checkboxContainer-withDescription">
@@ -225,7 +225,7 @@
             },
             Runtime: {
                 title: 'Video Length',
-                badges: [{id:'Runtime',key:'runtime',label:'Video length (e.g. 1h 52m)'}],
+                badges: [{id:'Runtime',key:'runtime',label:'Video length'}],
                 hasShowMode: false,
                 // A single badge, enabled with the panel, and only drawn as text.
                 single: true,
@@ -233,10 +233,12 @@
             },
             Rating: {
                 title: 'Rating',
-                badges: [{id:'Community',key:'rating',label:'Community rating (e.g. 7.8/10)'},{id:'Critic',key:'critic',label:'Critic rating (e.g. 92%)'}],
+                badges: [{id:'Community',key:'rating',label:'TMDB / IMDb rating'},{id:'Critic',key:'critic',label:'Rotten Tomatoes critics)'}],
                 hasShowMode: false,
                 fixedShowMode: 'All',
-                textOnly: true
+                textOnly: true,
+                // Text badges drawn after an icon, which the image gallery can replace.
+                iconImages: true
             }
         };
 
@@ -264,7 +266,8 @@
             if (b.key === 'channel') return { images: ['7.1', '5.1', 'stereo'], texts: ['7.1', '5.1', 'stereo'] };
             if (b.key === 'dvprofile') return { images: DV_PROFILES.map(function(p) { return 'dvp' + p; }), texts: [] };
             // Texts computed per item: nothing to replace.
-            if (b.key === 'runtime' || b.key === 'rating' || b.key === 'critic') return { images: [], texts: [] };
+            if (b.key === 'runtime') return { images: [], texts: [] };
+            if (b.key === 'rating' || b.key === 'critic') return { images: [b.key], texts: [] };
             return { images: [b.key], texts: [b.key] };
         }
 
@@ -602,7 +605,8 @@
             function toggle() {
                 var isText = styleEl.value === 'Text';
                 textDiv.classList.toggle('hidden', !isText);
-                if (images) images.classList.toggle('hidden', isText);
+                var def = PANEL_DEFS[key.replace(/^(Poster|Thumb)/, '')];
+                if (images) images.classList.toggle('hidden', isText && !(def && def.iconImages));
                 if (texts) texts.classList.toggle('hidden', !isText);
             }
             styleEl.addEventListener('change', toggle);

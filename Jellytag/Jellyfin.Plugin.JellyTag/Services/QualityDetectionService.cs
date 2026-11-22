@@ -194,7 +194,7 @@ public class QualityDetectionService : IQualityDetectionService
         // Providers without a rating may store 0: no badge rather than "0.0/10".
         if (item.CommunityRating is float community && community > 0)
         {
-            badges.Add(RatingBadge("rating", community.ToString("0.0", CultureInfo.InvariantCulture) + "/10"));
+            badges.Add(RatingBadge("rating", community.ToString("0.0", CultureInfo.InvariantCulture)));
         }
 
         if (item.CriticRating is float critic && critic > 0)
@@ -210,7 +210,8 @@ public class QualityDetectionService : IQualityDetectionService
         Category = BadgeCategory.Rating,
         BadgeKey = key,
         ResourceFileName = string.Empty,
-        DisplayText = text
+        DisplayText = text,
+        IconFileName = $"badge-{key}.svg"
     };
 
     private void DetectBadgesFromVideo(Video video, List<BadgeInfo> badges)

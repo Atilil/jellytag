@@ -23,6 +23,7 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
     private const int MaxBadgeSizePercent = 100;
     private const float MinBadgeMarginPercent = 0f;
     private const float MaxBadgeMarginPercent = 20f;
+    private const float IconHeightRatio = 0.6f;
 
     private static readonly Dictionary<string, string> BadgeDisplayText = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -213,11 +214,12 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
                 var useText = panel.Style == BadgeStyle.Text;
 
                 var sizes = new List<SKSizeI>();
+                var icons = new List<SKBitmap?>();
                 var sourceBitmaps = new List<SKBitmap>();
                 var filtered = new List<BadgeInfo>();
                 var ownedBitmaps = new List<SKBitmap>();
 
-                await PrepareBadgeGroup(panelBadges, sizePercent, image.Width, useText, sizes, sourceBitmaps, filtered, ownedBitmaps).ConfigureAwait(false);
+                await PrepareBadgeGroup(panelBadges, sizePercent, image.Width, useText, sizes, icons, sourceBitmaps, filtered, ownedBitmaps).ConfigureAwait(false);
                 allOwnedBitmaps.AddRange(ownedBitmaps);
 
                 if (filtered.Count == 0) continue;
@@ -227,6 +229,7 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
                     Panel = panel,
                     Filtered = filtered,
                     Sizes = sizes,
+                    Icons = icons,
                     SourceBitmaps = sourceBitmaps,
                     ImageConfig = imageConfig
                 });
@@ -258,7 +261,7 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
             foreach (var group in allPanelGroups)
             {
                 var useText = group.Panel.Style == BadgeStyle.Text;
-                RenderBadgeGroup(canvas, group.Filtered, group.SourceBitmaps, group.Positions, group.Sizes, useText, group.Panel, group.ImageConfig, paint, sampling);
+                RenderBadgeGroup(canvas, group.Filtered, group.SourceBitmaps, group.Icons, group.Positions, group.Sizes, useText, group.Panel, group.ImageConfig, paint, sampling);
             }
 
             canvas.Flush();
@@ -286,6 +289,7 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
         public BadgePanelSettings Panel { get; set; } = null!;
         public List<BadgeInfo> Filtered { get; set; } = new();
         public List<SKSizeI> Sizes { get; set; } = new();
+        public List<SKBitmap?> Icons { get; set; } = new();
         public List<SKBitmap> SourceBitmaps { get; set; } = new();
         public List<SKPointI> Positions { get; set; } = new();
         public ImageTypeConfig ImageConfig { get; set; } = null!;
@@ -397,12 +401,16 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
 
     private async Task PrepareBadgeGroup(
         List<BadgeInfo> badges, int sizePercent, int imageWidth, bool useTextStyle,
-        List<SKSizeI> sizes, List<SKBitmap> sourceBitmaps, List<BadgeInfo> filtered, List<SKBitmap> ownedBitmaps)
+        List<SKSizeI> sizes, List<SKBitmap?> icons, List<SKBitmap> sourceBitmaps, List<BadgeInfo> filtered, List<SKBitmap> ownedBitmaps)
     {
         if (useTextStyle)
         {
             var badgeWidth = Math.Max(1, (int)(imageWidth * (sizePercent / 100.0)));
             var badgeHeight = Math.Max(1, (int)(badgeWidth * 0.5));
+            if (badges.Any(b => b.IconFileName.Length > 0))
+            {
+                await EnsureBadgesLoaded().ConfigureAwait(false);
+            }
 
             foreach (var badgeInfo in badges)
             {
@@ -411,6 +419,7 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
 
                 filtered.Add(badgeInfo);
                 sizes.Add(new SKSizeI(badgeWidth, badgeHeight));
+                icons.Add(LoadIcon(badgeInfo.IconFileName, (int)(badgeHeight * IconHeightRatio), ownedBitmaps));
             }
         }
         else
@@ -497,6 +506,24 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
         {
             _badgeLock.Release();
         }
+    }
+
+    /// <summary>
+    /// The icon of a text badge at the given height, from the embedded or uploaded badge image.
+    /// </summary>
+    private SKBitmap? LoadIcon(string fileName, int height, List<SKBitmap> ownedBitmaps)
+    {
+        if (string.IsNullOrEmpty(fileName) || height < 1) return null;
+
+        if (_svgCache.TryGetValue(fileName, out var svgBytes))
+        {
+            var width = Math.Max(1, (int)(height * GetSvgAspectRatio(svgBytes)));
+            var bitmap = RasterizeSvg(svgBytes, width, height);
+            if (bitmap != null) ownedBitmaps.Add(bitmap);
+            return bitmap;
+        }
+
+        return _rasterCache.TryGetValue(fileName, out var raster) ? raster : null;
     }
 
     private static SKBitmap? RasterizeSvg(byte[] svgBytes, int targetWidth, int targetHeight)
@@ -876,7 +903,7 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
         return (bgColor, textColor, opacity, cornerRadius);
     }
 
-    private static void RenderTextBadges(SKCanvas canvas, List<BadgeInfo> badges, List<SKPointI> positions, List<SKSizeI> sizes, BadgePanelSettings panel, ImageTypeConfig imageConfig)
+    private static void RenderTextBadges(SKCanvas canvas, List<BadgeInfo> badges, List<SKPointI> positions, List<SKSizeI> sizes, BadgePanelSettings panel, ImageTypeConfig imageConfig, List<SKBitmap?>? icons = null)
     {
         for (int i = 0; i < badges.Count; i++)
         {
@@ -896,7 +923,17 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
             canvas.DrawRoundRect(rect, cornerRadius, cornerRadius, bgPaint);
 
             var padding = width * 0.1f;
-            var availableWidth = width - (2 * padding);
+            var left = rect.Left + padding;
+            var icon = icons != null && i < icons.Count ? icons[i] : null;
+            if (icon != null)
+            {
+                var iconRect = SKRect.Create(left, rect.MidY - (icon.Height / 2f), icon.Width, icon.Height);
+                using var iconImage = SKImage.FromBitmap(icon);
+                canvas.DrawImage(iconImage, iconRect, new SKSamplingOptions(SKCubicResampler.Mitchell), textPaint);
+                left = iconRect.Right + (padding / 2f);
+            }
+
+            var availableWidth = rect.Right - padding - left;
 
             var fontSize = height * 0.7f;
             var font = new SKFont(SKTypeface.Default, fontSize);
@@ -914,7 +951,7 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
                     textWidth = font.MeasureText(text);
                 }
 
-                var textX = rect.MidX - (textWidth / 2f);
+                var textX = left + ((availableWidth - textWidth) / 2f);
                 var textY = rect.MidY + (fontSize / 3f);
 
                 canvas.DrawText(text, textX, textY, font, textPaint);
@@ -927,7 +964,7 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
     }
 
     private static void RenderBadgeGroup(
-        SKCanvas canvas, List<BadgeInfo> filtered, List<SKBitmap> sourceBitmaps,
+        SKCanvas canvas, List<BadgeInfo> filtered, List<SKBitmap> sourceBitmaps, List<SKBitmap?> icons,
         List<SKPointI> positions, List<SKSizeI> sizes, bool useText,
         BadgePanelSettings panel, ImageTypeConfig imageConfig, SKPaint paint, SKSamplingOptions sampling)
     {
@@ -935,7 +972,7 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
 
         if (useText)
         {
-            RenderTextBadges(canvas, filtered, positions, sizes, panel, imageConfig);
+            RenderTextBadges(canvas, filtered, positions, sizes, panel, imageConfig, icons);
         }
         else
         {

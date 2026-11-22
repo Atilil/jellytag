@@ -33,4 +33,16 @@ public class BadgeAssetsTests
 
         Assert.Empty(missing);
     }
+
+    // #11: the rating icons drawn before the text.
+    [Fact]
+    public void EveryRatingIcon_IsEmbedded()
+    {
+        var resources = EmbeddedAssets();
+        var missing = QualityDetectionService.DetectRatings(new MediaBrowser.Controller.Entities.Movies.Movie { CommunityRating = 7f, CriticRating = 70f })
+            .Select(b => b.IconFileName)
+            .Where(file => !resources.Contains(file));
+
+        Assert.Empty(missing);
+    }
 }
