@@ -233,6 +233,7 @@ public class ImageCacheService : IImageCacheService
         AppendPanelFingerprint(sb, c.AudioPanel);
         AppendPanelFingerprint(sb, c.LanguagePanel);
         AppendPanelFingerprint(sb, c.RuntimePanel);
+        AppendPanelFingerprint(sb, c.RatingPanel);
         if (c.SubtitlePanel != null) AppendPanelFingerprint(sb, c.SubtitlePanel);
         sb.Append(c.ShowVostIndicator).Append(c.VostBgColor ?? "n").Append(c.VostTextColor ?? "n");
         sb.Append(c.VostBgOpacity).Append(c.VostCornerRadius).Append('|');

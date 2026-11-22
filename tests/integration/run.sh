@@ -202,6 +202,13 @@ config '.PosterConfig.ResolutionPanel.SizePercent = 80'
 check "badge size: 80 % larger than 50 %" true "$([[ $(served "$id") != "$half" ]] && echo true || echo false)"
 config ".PosterConfig.ResolutionPanel.SizePercent = $size"
 
+# --- Ratings (#11): read from the .nfo, drawn when the panel is enabled
+
+config '.PosterConfig.RatingPanel.Enabled = true'
+check "ratings: poster drawn again" true "$([[ $(served "$id") != "${rendered[$title]}" ]] && echo true || echo false)"
+check "ratings: community and critic badges" "$(sorted <<<"${expected[$title]}_rating_critic")" "$(badges "$title")"
+config '.PosterConfig.RatingPanel.Enabled = false'
+
 # --- Same row (#9): the codec badge joins the resolution row; a column has no row to join
 
 config '.PosterConfig.CodecPanel.InlineWithPrevious = true'

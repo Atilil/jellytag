@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Globalization;
 using Jellyfin.Data.Enums;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Library;
@@ -178,8 +179,39 @@ public class QualityDetectionService : IQualityDetectionService
             }
         }
 
+        badges.AddRange(DetectRatings(item));
         return badges;
     }
+
+    /// <summary>
+    /// Rating badges from the item's own metadata: community rating out of 10, critic rating
+    /// in percent. The provider that wrote them is not recorded, hence no source label.
+    /// </summary>
+    internal static List<BadgeInfo> DetectRatings(BaseItem item)
+    {
+        var badges = new List<BadgeInfo>();
+
+        // Providers without a rating may store 0: no badge rather than "0.0/10".
+        if (item.CommunityRating is float community && community > 0)
+        {
+            badges.Add(RatingBadge("rating", community.ToString("0.0", CultureInfo.InvariantCulture) + "/10"));
+        }
+
+        if (item.CriticRating is float critic && critic > 0)
+        {
+            badges.Add(RatingBadge("critic", ((int)Math.Round(critic)).ToString(CultureInfo.InvariantCulture) + "%"));
+        }
+
+        return badges;
+    }
+
+    private static BadgeInfo RatingBadge(string key, string text) => new()
+    {
+        Category = BadgeCategory.Rating,
+        BadgeKey = key,
+        ResourceFileName = string.Empty,
+        DisplayText = text
+    };
 
     private void DetectBadgesFromVideo(Video video, List<BadgeInfo> badges)
     {

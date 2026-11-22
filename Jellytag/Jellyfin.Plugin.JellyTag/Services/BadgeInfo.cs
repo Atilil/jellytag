@@ -43,7 +43,12 @@ public enum BadgeCategory
     /// <summary>
     /// Video length badge (e.g. "1h 52m").
     /// </summary>
-    Runtime
+    Runtime,
+
+    /// <summary>
+    /// Rating badges stored in the item's metadata (e.g. "7.8/10", "92%").
+    /// </summary>
+    Rating
 }
 
 /// <summary>

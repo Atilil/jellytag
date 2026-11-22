@@ -230,6 +230,13 @@
                 // A single badge, enabled with the panel, and only drawn as text.
                 single: true,
                 textOnly: true
+            },
+            Rating: {
+                title: 'Rating',
+                badges: [{id:'Community',key:'rating',label:'Community rating (e.g. 7.8/10)'},{id:'Critic',key:'critic',label:'Critic rating (e.g. 92%)'}],
+                hasShowMode: false,
+                fixedShowMode: 'All',
+                textOnly: true
             }
         };
 
@@ -256,7 +263,8 @@
         function customKeysOf(b) {
             if (b.key === 'channel') return { images: ['7.1', '5.1', 'stereo'], texts: ['7.1', '5.1', 'stereo'] };
             if (b.key === 'dvprofile') return { images: DV_PROFILES.map(function(p) { return 'dvp' + p; }), texts: [] };
-            if (b.key === 'runtime') return { images: [], texts: [] };
+            // Texts computed per item: nothing to replace.
+            if (b.key === 'runtime' || b.key === 'rating' || b.key === 'critic') return { images: [], texts: [] };
             return { images: [b.key], texts: [b.key] };
         }
 
@@ -435,7 +443,7 @@
         }
 
         function generatePanels(prefix) {
-            return panelHTML(prefix, 'Res') + panelHTML(prefix, 'Hdr') + panelHTML(prefix, 'Codec') + panelHTML(prefix, 'Audio') + langPanelHTML(prefix) + subPanelHTML(prefix) + panelHTML(prefix, 'Runtime');
+            return panelHTML(prefix, 'Res') + panelHTML(prefix, 'Hdr') + panelHTML(prefix, 'Codec') + panelHTML(prefix, 'Audio') + langPanelHTML(prefix) + subPanelHTML(prefix) + panelHTML(prefix, 'Runtime') + panelHTML(prefix, 'Rating');
         }
 
         // ===== Panel reordering =====
@@ -779,7 +787,7 @@
         }
 
         function setupAllToggles(prefix) {
-            ['Res', 'Hdr', 'Codec', 'Audio', 'Runtime'].forEach(function(pid) {
+            ['Res', 'Hdr', 'Codec', 'Audio', 'Runtime', 'Rating'].forEach(function(pid) {
                 setupCustomRows(prefix + pid);
                 setupEnableToggle(prefix + pid);
                 setupStyleToggle(prefix + pid);
@@ -891,6 +899,7 @@
             loadPanelConfig(prefix, 'Codec', itc.CodecPanel);
             loadPanelConfig(prefix, 'Audio', itc.AudioPanel);
             loadPanelConfig(prefix, 'Runtime', itc.RuntimePanel);
+            if (itc.RatingPanel) loadPanelConfig(prefix, 'Rating', itc.RatingPanel);
             loadLangConfig(prefix, itc.LanguagePanel, itc);
             loadSubConfig(prefix, itc.SubtitlePanel);
             // Sort panels by Order
@@ -901,7 +910,8 @@
                 Audio: (itc.AudioPanel || {}).Order || 0,
                 Lang: (itc.LanguagePanel || {}).Order || 0,
                 Sub: (itc.SubtitlePanel || {}).Order || 0,
-                Runtime: (itc.RuntimePanel || {}).Order || 5
+                Runtime: (itc.RuntimePanel || {}).Order || 5,
+                Rating: (itc.RatingPanel || {}).Order || 7
             };
             var container = document.getElementById(prefix + 'Panels');
             if (container) sortPanelsByOrder(container, orderMap);
@@ -931,7 +941,7 @@
             return {
                 Enabled: q(k + 'Enabled').checked,
                 Position: q(k + 'Position').value,
-                ShowMode: q(k + 'ShowMode') ? q(k + 'ShowMode').value : 'Highest',
+                ShowMode: q(k + 'ShowMode') ? q(k + 'ShowMode').value : (PANEL_DEFS[panelId].fixedShowMode || 'Highest'),
                 Layout: q(k + 'Layout').value,
                 InlineWithPrevious: q(k + 'Inline').checked,
                 GapPercent: parseFloat(q(k + 'Gap').value) || 0,
@@ -1005,7 +1015,7 @@
         function collectImageTypeConfig(prefix) {
             var k = prefix + 'Lang';
             var container = document.getElementById(prefix + 'Panels');
-            var order = container ? getPanelOrder(container) : {Res:0,Hdr:1,Codec:2,Audio:3,Lang:4,Sub:5,Runtime:6};
+            var order = container ? getPanelOrder(container) : {Res:0,Hdr:1,Codec:2,Audio:3,Lang:4,Sub:5,Runtime:6,Rating:7};
             return {
                 Enabled: q(prefix + 'Enabled').checked,
                 ResolutionPanel: collectPanelConfig(prefix, 'Res', order.Res || 0),
@@ -1014,7 +1024,8 @@
                 AudioPanel: collectPanelConfig(prefix, 'Audio', order.Audio || 0),
                 LanguagePanel: collectLangConfig(prefix),
                 SubtitlePanel: collectSubConfig(prefix, order.Sub != null ? order.Sub : 5),
-                RuntimePanel: collectPanelConfig(prefix, 'Runtime', order.Runtime != null ? order.Runtime : 6)
+                RuntimePanel: collectPanelConfig(prefix, 'Runtime', order.Runtime != null ? order.Runtime : 6),
+                RatingPanel: collectPanelConfig(prefix, 'Rating', order.Rating != null ? order.Rating : 7)
             };
         }
 

@@ -216,6 +216,7 @@ public partial class ImageOverlayMiddleware
             AudioPanel = ClonePanelWithReduction(source.AudioPanel, reduction),
             LanguagePanel = ClonePanelWithReduction(source.LanguagePanel, reduction),
             RuntimePanel = ClonePanelWithReduction(source.RuntimePanel, reduction),
+            RatingPanel = ClonePanelWithReduction(source.RatingPanel, reduction),
             SubtitlePanel = source.SubtitlePanel == null ? null : ClonePanelWithReduction(source.SubtitlePanel, reduction),
             ShowVostIndicator = source.ShowVostIndicator,
             VostBgColor = source.VostBgColor,

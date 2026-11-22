@@ -80,6 +80,7 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
             BadgeCategory.Language => imageConfig.LanguagePanel,
             BadgeCategory.Subtitle => imageConfig.SubtitlePanel ?? imageConfig.LanguagePanel,
             BadgeCategory.Runtime => imageConfig.RuntimePanel,
+            BadgeCategory.Rating => imageConfig.RatingPanel,
             _ => imageConfig.ResolutionPanel
         };
     }
@@ -299,7 +300,8 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
             (imageConfig.CodecPanel, "Codec"),
             (imageConfig.AudioPanel, "Audio"),
             (imageConfig.LanguagePanel, "Language"),
-            (imageConfig.RuntimePanel, "Runtime")
+            (imageConfig.RuntimePanel, "Runtime"),
+            (imageConfig.RatingPanel, "Rating")
         };
         if (imageConfig.SubtitlePanel != null)
         {

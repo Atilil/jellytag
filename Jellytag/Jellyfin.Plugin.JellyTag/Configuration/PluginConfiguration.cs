@@ -147,6 +147,18 @@ public class ImageTypeConfig
         EnabledBadges = new List<string> { "runtime" }
     };
 
+    // Optional rating panel: off by default, like the video length.
+    public BadgePanelSettings RatingPanel { get; set; } = CreateDefaultRatingPanel(15);
+
+    public static BadgePanelSettings CreateDefaultRatingPanel(int sizePercent) => new()
+    {
+        Enabled = false, Order = 7, Position = BadgePosition.BottomLeft,
+        Layout = BadgeLayout.Horizontal, SizePercent = sizePercent, MarginPercent = 2.5f, GapPercent = 10f,
+        ShowMode = BadgeDisplayMode.All,
+        Style = BadgeStyle.Text,
+        EnabledBadges = new List<string> { "rating", "critic" }
+    };
+
     // Null in configurations saved before 3.2.0: filled from the VOST settings below by
     // PluginConfiguration.EnsureSubtitlePanels.
     public BadgePanelSettings? SubtitlePanel { get; set; }
@@ -517,6 +529,7 @@ public class PluginConfiguration : BasePluginConfiguration
         };
 
         config.RuntimePanel = ImageTypeConfig.CreateDefaultRuntimePanel(10);
+        config.RatingPanel = ImageTypeConfig.CreateDefaultRatingPanel(10);
 
         config.SubtitlePanel = ImageTypeConfig.CreateDefaultSubtitlePanel(10, 2.5f, 1);
 
