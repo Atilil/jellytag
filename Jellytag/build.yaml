@@ -21,10 +21,11 @@ description: >
 artifacts:
   - "Jellyfin.Plugin.JellyTag.dll"
 changelog: |
-  - Badges cover every version of a movie (e.g. 1080p and 4K files).
-  - Language flags: the default audio track comes first, the others alphabetically;
-    15 new flags; flags can be replaced in the custom badge gallery.
-  - Dolby Vision is shown with its HDR10/HDR10+/HLG base layer, Atmos with
-    TrueHD, DTS:X with DTS-HD MA (set the HDR or audio panel to "All" to see both).
-  - French VFQ/VFF audio detection and an optional video length badge.
-  - Intro videos added by other plugins no longer get badges.
+  - Subtitles get their own panel: position, layout, colors, all languages or only
+    those without matching audio, labels as EN, CC EN or VOSTEN. Existing setups
+    keep their VOST look.
+  - Language filters: show only some languages, or all except some; undefined (und)
+    tracks are hidden.
+  - Optional Dolby Vision profile badge (DV P5, P7, P8.1...).
+  - Reworked configuration page: compact panels, each customizing only its active
+    badges; languages are picked by name.
