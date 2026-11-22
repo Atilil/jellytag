@@ -247,6 +247,7 @@ public class ImageCacheService : IImageCacheService
         sb.Append(string.Join(",", p.EnabledBadges));
         sb.Append((int)p.LanguageFilter).Append(string.Join(",", p.LanguageCodes)).Append(p.HideUndefinedLanguage);
         sb.Append(p.SubtitlesWithoutAudioOnly).Append((int)p.SubtitleLabel);
+        sb.Append(p.InlineWithPrevious);
         if (p.BadgeTypeOverrides != null)
         {
             foreach (var o in p.BadgeTypeOverrides)

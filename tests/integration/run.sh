@@ -202,6 +202,16 @@ config '.PosterConfig.ResolutionPanel.SizePercent = 80'
 check "badge size: 80 % larger than 50 %" true "$([[ $(served "$id") != "$half" ]] && echo true || echo false)"
 config ".PosterConfig.ResolutionPanel.SizePercent = $size"
 
+# --- Same row (#9): the codec badge joins the resolution row; a column has no row to join
+
+config '.PosterConfig.CodecPanel.InlineWithPrevious = true'
+check "same row: after a column, poster unchanged" "${rendered[$title]}" "$(served "$id")"
+config '.PosterConfig.ResolutionPanel.Layout = "Horizontal" | .PosterConfig.CodecPanel.InlineWithPrevious = false'
+row=$(served "$id")
+config '.PosterConfig.CodecPanel.InlineWithPrevious = true'
+check "same row: codec badge moved next to the resolution" true "$([[ $(served "$id") != "$row" ]] && echo true || echo false)"
+config '.PosterConfig.ResolutionPanel.Layout = "Vertical" | .PosterConfig.CodecPanel.InlineWithPrevious = false'
+
 # --- Custom flag: an uploaded flag-eng replaces the English flag, deleting it restores the default
 
 title="JT 4K"

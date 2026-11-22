@@ -249,7 +249,8 @@ public partial class ImageOverlayMiddleware
             LanguageCodes = new List<string>(panel.LanguageCodes),
             HideUndefinedLanguage = panel.HideUndefinedLanguage,
             SubtitlesWithoutAudioOnly = panel.SubtitlesWithoutAudioOnly,
-            SubtitleLabel = panel.SubtitleLabel
+            SubtitleLabel = panel.SubtitleLabel,
+            InlineWithPrevious = panel.InlineWithPrevious
         };
     }
 }

@@ -240,32 +240,10 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
                 return (output, sourceContentType);
             }
 
-            // Calculate positions: panels at the same position stack on top of each other in Order order
-            // Track cumulative vertical extent per position corner
-            var priorExtents = Enum.GetValues<BadgePosition>().ToDictionary(p => p, _ => 0);
-
-            foreach (var group in allPanelGroups)
+            var layout = LayoutPanels(image.Width, image.Height, allPanelGroups.Select(g => (g.Panel, g.Sizes)).ToList());
+            for (var i = 0; i < allPanelGroups.Count; i++)
             {
-                var panel = group.Panel;
-                var marginPercent = Math.Clamp(panel.MarginPercent, MinBadgeMarginPercent, MaxBadgeMarginPercent);
-                var badgeMargin = (int)(image.Width * marginPercent / 100f);
-                var gapPercent = Math.Max(0f, panel.GapPercent);
-                var gap = group.Sizes.Count > 0 ? (int)(group.Sizes.Average(s => s.Height) * gapPercent / 100f) : 0;
-
-                // Reverse order if needed
-                if (ShouldReverseOrder(panel.Layout, panel.Position))
-                {
-                    group.Filtered.Reverse();
-                    group.Sizes.Reverse();
-                    group.SourceBitmaps.Reverse();
-                }
-
-                var priorExtent = priorExtents[panel.Position];
-                group.Positions = CalculateStackedPositions(image.Width, image.Height, group.Sizes, panel.Position, badgeMargin, gap, panel.Layout, priorExtent);
-
-                // Update prior extent for this corner
-                var groupExtent = GroupVerticalExtent(group.Sizes, gap, panel.Layout);
-                priorExtents[panel.Position] += groupExtent;
+                allPanelGroups[i].Positions = layout[i];
             }
 
             // Draw badges onto image
@@ -332,6 +310,59 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
         // OrderBy is stable, unlike List.Sort: panels with the same order keep the list order.
         return panels.OrderBy(p => p.Panel.Order).ToList();
     }
+
+    /// <summary>
+    /// Positions of each group's badges, in the group's order. Panels at the same position stack
+    /// in panel order; a panel marked InlineWithPrevious continues the row of the previous panel
+    /// at its position when that row is horizontal.
+    /// </summary>
+    internal static List<List<SKPointI>> LayoutPanels(
+        int imageWidth, int imageHeight, IReadOnlyList<(BadgePanelSettings Panel, List<SKSizeI> Sizes)> groups)
+    {
+        // Each line holds group indices; the first group's settings place the whole line.
+        var lines = new List<List<int>>();
+        var lastLine = new Dictionary<BadgePosition, List<int>>();
+        for (var g = 0; g < groups.Count; g++)
+        {
+            var panel = groups[g].Panel;
+            if (JoinsLine(panel, lastLine.GetValueOrDefault(panel.Position), groups))
+            {
+                lastLine[panel.Position].Add(g);
+                continue;
+            }
+
+            var line = new List<int> { g };
+            lines.Add(line);
+            lastLine[panel.Position] = line;
+        }
+
+        var result = groups.Select(_ => new List<SKPointI>()).ToList();
+        var priorExtents = Enum.GetValues<BadgePosition>().ToDictionary(p => p, _ => 0);
+        foreach (var line in lines)
+        {
+            var first = groups[line[0]].Panel;
+            var marginPercent = Math.Clamp(first.MarginPercent, MinBadgeMarginPercent, MaxBadgeMarginPercent);
+            var margin = (int)(imageWidth * marginPercent / 100f);
+
+            // (group, badge) slots in reading order, reversed where the first badge sits at the far edge.
+            var slots = line.SelectMany(g => groups[g].Sizes.Select((_, b) => (Group: g, Badge: b))).ToList();
+            if (ShouldReverseOrder(first.Layout, first.Position)) slots.Reverse();
+            var sizes = slots.Select(s => groups[s.Group].Sizes[s.Badge]).ToList();
+            var gap = sizes.Count > 0 ? (int)(sizes.Average(s => s.Height) * Math.Max(0f, first.GapPercent) / 100f) : 0;
+
+            var points = CalculateStackedPositions(imageWidth, imageHeight, sizes, first.Position, margin, gap, first.Layout, priorExtents[first.Position]);
+            var byGroup = line.ToDictionary(g => g, g => new SKPointI[groups[g].Sizes.Count]);
+            for (var i = 0; i < slots.Count; i++) byGroup[slots[i].Group][slots[i].Badge] = points[i];
+            foreach (var g in line) result[g] = byGroup[g].ToList();
+
+            priorExtents[first.Position] += GroupVerticalExtent(sizes, gap, first.Layout);
+        }
+
+        return result;
+    }
+
+    private static bool JoinsLine(BadgePanelSettings panel, List<int>? line, IReadOnlyList<(BadgePanelSettings Panel, List<SKSizeI> Sizes)> groups) =>
+        panel.InlineWithPrevious && line != null && groups[line[0]].Panel.Layout == BadgeLayout.Horizontal;
 
     private static int GroupVerticalExtent(List<SKSizeI> sizes, int gap, BadgeLayout layout)
     {

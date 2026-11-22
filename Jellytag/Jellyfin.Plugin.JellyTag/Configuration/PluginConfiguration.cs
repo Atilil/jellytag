@@ -117,6 +117,11 @@ public class BadgePanelSettings
     // Subtitle panel only
     public bool SubtitlesWithoutAudioOnly { get; set; } = true;
     public SubtitleLabel SubtitleLabel { get; set; } = SubtitleLabel.Code;
+
+    /// <summary>
+    /// Continue the row of the previous panel at the same position instead of starting a new one.
+    /// </summary>
+    public bool InlineWithPrevious { get; set; }
 }
 
 /// <summary>

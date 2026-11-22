@@ -319,6 +319,7 @@
             h += '</div>';
             h += '<div class="jellytag-row">' + sel(k + 'Position', 'Position', POS_OPTS);
             h += '<div id="' + k + 'LayoutWrap">' + sel(k + 'Layout', 'Layout', LAYOUT_OPTS) + '</div></div>';
+            h += chk(k + 'Inline', 'Join the previous panel\'s row', 'Places these badges next to the previous panel at the same position. That panel must use the Horizontal layout; has no effect on the first panel of a position.');
             h += '<div class="jellytag-row three"><div id="' + k + 'GapWrap">' + num(k + 'Gap', 'Gap (%)', 0, 50, 1) + '</div>';
             h += num(k + 'Size', 'Size (%)', 5, 100, 1) + num(k + 'Margin', 'Margin (%)', 0, 20, 0.5) + '</div>';
 
@@ -386,6 +387,7 @@
             h += langFilterHTML(k);
             h += '<div class="jellytag-row">' + sel(k + 'Position', 'Position', POS_OPTS);
             h += sel(k + 'Layout', 'Layout', LAYOUT_OPTS) + '</div>';
+            h += chk(k + 'Inline', 'Join the previous panel\'s row', 'Places these badges next to the previous panel at the same position. That panel must use the Horizontal layout; has no effect on the first panel of a position.');
             h += '<div class="jellytag-row three">' + num(k + 'Gap', 'Gap (%)', 0, 50, 1);
             h += num(k + 'Size', 'Size (%)', 5, 100, 1) + num(k + 'Margin', 'Margin (%)', 0, 20, 0.5) + '</div>';
             h += '<div class="jellytag-text-box">';
@@ -407,6 +409,7 @@
             h += sel(k + 'Style', 'Badge Style', [{v:'Image',l:'Image'},{v:'Text',l:'Text'}]) + '</div>';
             h += '<div class="jellytag-row">' + sel(k + 'Position', 'Position', POS_OPTS);
             h += '<div id="' + k + 'LayoutWrap">' + sel(k + 'Layout', 'Layout', LAYOUT_OPTS) + '</div></div>';
+            h += chk(k + 'Inline', 'Join the previous panel\'s row', 'Places these badges next to the previous panel at the same position. That panel must use the Horizontal layout; has no effect on the first panel of a position.');
             h += '<div class="jellytag-row three"><div id="' + k + 'GapWrap">' + num(k + 'Gap', 'Gap (%)', 0, 50, 1) + '</div>';
             h += num(k + 'Size', 'Size (%)', 5, 100, 1) + num(k + 'Margin', 'Margin (%)', 0, 20, 0.5) + '</div>';
             h += langFilterHTML(k);
@@ -795,6 +798,7 @@
             q(k + 'Position').value = pc.Position || 'TopLeft';
             if (pc.ShowMode && q(k + 'ShowMode')) q(k + 'ShowMode').value = pc.ShowMode;
             q(k + 'Layout').value = pc.Layout || 'Vertical';
+            q(k + 'Inline').checked = pc.InlineWithPrevious === true;
             q(k + 'Gap').value = pc.GapPercent != null ? pc.GapPercent : 10;
             q(k + 'Size').value = pc.SizePercent != null ? pc.SizePercent : 15;
             q(k + 'Margin').value = pc.MarginPercent != null ? pc.MarginPercent : 2.5;
@@ -834,6 +838,7 @@
             q(k + 'Position').value = lc.Position || 'TopLeft';
             q(k + 'ShowMode').value = lc.ShowMode || 'All';
             q(k + 'Layout').value = lc.Layout || 'Vertical';
+            q(k + 'Inline').checked = lc.InlineWithPrevious === true;
             q(k + 'Gap').value = lc.GapPercent != null ? lc.GapPercent : 10;
             q(k + 'Size').value = lc.SizePercent != null ? lc.SizePercent : 15;
             q(k + 'Margin').value = lc.MarginPercent != null ? lc.MarginPercent : 2.5;
@@ -860,6 +865,7 @@
             q(k + 'Label').value = sc.SubtitleLabel || 'Code';
             q(k + 'Position').value = sc.Position || 'TopLeft';
             q(k + 'Layout').value = sc.Layout || 'Vertical';
+            q(k + 'Inline').checked = sc.InlineWithPrevious === true;
             q(k + 'Gap').value = sc.GapPercent != null ? sc.GapPercent : 10;
             q(k + 'Size').value = sc.SizePercent != null ? sc.SizePercent : 15;
             q(k + 'Margin').value = sc.MarginPercent != null ? sc.MarginPercent : 2.5;
@@ -920,6 +926,7 @@
                 Position: q(k + 'Position').value,
                 ShowMode: q(k + 'ShowMode') ? q(k + 'ShowMode').value : 'Highest',
                 Layout: q(k + 'Layout').value,
+                InlineWithPrevious: q(k + 'Inline').checked,
                 GapPercent: parseFloat(q(k + 'Gap').value) || 0,
                 SizePercent: parseInt(q(k + 'Size').value, 10) || 15,
                 MarginPercent: numOr(k + 'Margin', 2.5),
@@ -943,6 +950,7 @@
                 Position: q(k + 'Position').value,
                 ShowMode: q(k + 'ShowMode').value,
                 Layout: q(k + 'Layout').value,
+                InlineWithPrevious: q(k + 'Inline').checked,
                 GapPercent: parseFloat(q(k + 'Gap').value) || 0,
                 SizePercent: parseInt(q(k + 'Size').value, 10) || 15,
                 MarginPercent: numOr(k + 'Margin', 2.5),
@@ -967,6 +975,7 @@
                 Position: q(k + 'Position').value,
                 ShowMode: 'All',
                 Layout: q(k + 'Layout').value,
+                InlineWithPrevious: q(k + 'Inline').checked,
                 GapPercent: parseFloat(q(k + 'Gap').value) || 0,
                 SizePercent: parseInt(q(k + 'Size').value, 10) || 15,
                 MarginPercent: numOr(k + 'Margin', 2.5),
