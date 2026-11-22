@@ -188,6 +188,15 @@ check "centered position: poster drawn again" true "$([[ $(served "$id") != "${r
 config ".PosterConfig.ResolutionPanel.Position = \"$position\""
 check "centered position: previous poster back" "${rendered[$title]}" "$(served "$id")"
 
+# --- Badge size (#22): the page offers up to 100 %, the server must not cap it lower
+
+size=$(api GET "/Plugins/$plugin/Configuration" | jq -r .PosterConfig.ResolutionPanel.SizePercent)
+config '.PosterConfig.ResolutionPanel.SizePercent = 50'
+half=$(served "$id")
+config '.PosterConfig.ResolutionPanel.SizePercent = 80'
+check "badge size: 80 % larger than 50 %" true "$([[ $(served "$id") != "$half" ]] && echo true || echo false)"
+config ".PosterConfig.ResolutionPanel.SizePercent = $size"
+
 # --- Custom flag: an uploaded flag-eng replaces the English flag, deleting it restores the default
 
 title="JT 4K"

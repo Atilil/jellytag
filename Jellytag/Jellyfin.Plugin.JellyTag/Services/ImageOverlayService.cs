@@ -20,7 +20,7 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
     private bool _disposed;
 
     private const int MinBadgeSizePercent = 5;
-    private const int MaxBadgeSizePercent = 50;
+    private const int MaxBadgeSizePercent = 100;
     private const float MinBadgeMarginPercent = 0f;
     private const float MaxBadgeMarginPercent = 20f;
 
