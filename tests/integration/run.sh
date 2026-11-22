@@ -89,10 +89,13 @@ check "plugin loaded" Active "$(api GET /Plugins | jq -r '.[] | select(.Name == 
 
 api POST "/Library/VirtualFolders?name=movies&collectionType=movies&paths=/media/movies&refreshLibrary=false" \
     '{"LibraryOptions":{"TypeOptions":[{"Type":"Movie","MetadataFetchers":[],"ImageFetchers":[]}]}}'
+api POST "/Library/VirtualFolders?name=shows&collectionType=tvshows&paths=/media/shows&refreshLibrary=false" \
+    '{"LibraryOptions":{"TypeOptions":[{"Type":"Series","MetadataFetchers":[],"ImageFetchers":[]},{"Type":"Season","MetadataFetchers":[],"ImageFetchers":[]},{"Type":"Episode","MetadataFetchers":[],"ImageFetchers":[]}]}}'
 api POST /Library/Refresh
 
 scan_done() {
     [[ $(api GET "/Items?Recursive=true&IncludeItemTypes=Movie" | jq .TotalRecordCount) == 12 ]] &&
+        [[ $(api GET "/Items?Recursive=true&IncludeItemTypes=Episode" | jq .TotalRecordCount) == 1 ]] &&
         api GET /ScheduledTasks | jq -e '.[] | select(.Key == "RefreshLibrary") | .State == "Idle"'
 }
 wait_for 180 "the library scan" scan_done
@@ -208,6 +211,15 @@ check "custom flag: preview serves it" "$(md5sum <<<"$custom" | cut -d' ' -f1)" 
 check "custom flag: poster drawn with it" true "$([[ $(served "$id") != "${rendered[$title]}" ]] && echo true || echo false)"
 api DELETE /JellyTag/CustomBadge/flag-eng
 check "custom flag: default flag back" "${rendered[$title]}" "$(served "$id")"
+
+# --- Episodes (#22): drawn with the thumbnail settings, left alone when switched off
+
+episode=$(api GET "/Items?Recursive=true&IncludeItemTypes=Episode" | jq -r '.Items[0].Id')
+thumb=$(md5sum "$work/media/shows/JT Show/Season 01/JT Show S01E01-thumb.jpg" | cut -d' ' -f1)
+check "episode: thumbnail has badges" true "$([[ $(served "$episode") != "$thumb" ]] && echo true || echo false)"
+config '.ShowOnEpisodes = false'
+check "episode: switched off, original thumbnail" "$thumb" "$(served "$episode")"
+config '.ShowOnEpisodes = true'
 
 api POST "/Plugins/$plugin/Configuration" "$(api GET "/Plugins/$plugin/Configuration" | jq -c '.Enabled = false')"
 check "disabled: original poster served" "$(original "$title")" "$(served "$id")"

@@ -117,6 +117,13 @@
                                 </label>
                                 <div class="fieldDescription">Use the same settings as Poster for thumbnails.</div>
                             </div>
+                            <div class="checkboxContainer checkboxContainer-withDescription">
+                                <label class="emby-checkbox-label">
+                                    <input id="ShowOnEpisodes" type="checkbox" is="emby-checkbox" />
+                                    <span>Badges on episodes</span>
+                                </label>
+                                <div class="fieldDescription">Episode images use the thumbnail settings. Uncheck to keep a series' badges on its poster only.</div>
+                            </div>
                             <div id="ThumbSizeReductionWrap" class="inputContainer hidden">
                                 <label class="inputLabel inputLabelUnfocused" for="ThumbnailSizeReduction">Size reduction (percentage points)</label>
                                 <input id="ThumbnailSizeReduction" type="number" min="0" max="50" step="1" is="emby-input" />
@@ -998,6 +1005,7 @@
         function collectConfigFromForm(config) {
             config.Enabled = q('Enabled').checked;
             config.ThumbnailSameAsPoster = q('ThumbnailSameAsPoster').checked;
+            config.ShowOnEpisodes = q('ShowOnEpisodes').checked;
             config.ThumbnailSizeReduction = parseInt(q('ThumbnailSizeReduction').value, 10) || 0;
             config.PosterConfig = collectImageTypeConfig('Poster');
             config.ThumbnailConfig = collectImageTypeConfig('Thumb');
@@ -1151,6 +1159,7 @@
             ApiClient.getPluginConfiguration(JellyTagConfig.pluginUniqueId).then(function(config) {
                 q('Enabled').checked = config.Enabled;
                 q('ThumbnailSameAsPoster').checked = config.ThumbnailSameAsPoster === true;
+                q('ShowOnEpisodes').checked = config.ShowOnEpisodes !== false;
                 q('ThumbnailSizeReduction').value = config.ThumbnailSizeReduction != null ? config.ThumbnailSizeReduction : 10;
 
                 loadImageTypeConfig('Poster', config.PosterConfig || {});

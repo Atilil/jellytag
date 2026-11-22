@@ -176,6 +176,7 @@ public class PluginConfiguration : BasePluginConfiguration
         ThumbnailConfig = CreateDefaultThumbnailConfig();
         ThumbnailSameAsPoster = true;
         ThumbnailSizeReduction = 5;
+        ShowOnEpisodes = true;
         ExcludedLibraryIds = new List<string>();
 
         CustomBadgeTexts = new List<BadgeTextOverride>();
@@ -190,6 +191,11 @@ public class PluginConfiguration : BasePluginConfiguration
     public ImageTypeConfig PosterConfig { get; set; }
     public ImageTypeConfig ThumbnailConfig { get; set; }
     public bool ThumbnailSameAsPoster { get; set; }
+
+    /// <summary>
+    /// Whether episode images get badges. Off keeps a series' badges on its poster only.
+    /// </summary>
+    public bool ShowOnEpisodes { get; set; }
 
     /// <summary>
     /// Size reduction (in percentage points) applied to badge sizes when ThumbnailSameAsPoster is enabled.

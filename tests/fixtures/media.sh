@@ -7,7 +7,9 @@ media=$1/movies
 
 # A global LD_LIBRARY_PATH (alsa-lib from the host profile) breaks the flake ffmpeg.
 # A fixture never takes more than a few seconds: a stuck encode fails instead of hanging.
-ff() { timeout 120 env -u LD_LIBRARY_PATH ffmpeg -loglevel error -y "$@"; }
+# -nostdin: under timeout ffmpeg runs in a background process group, and reading the
+# terminal would stop it (SIGTTIN/SIGTTOU) until the timeout kills it.
+ff() { timeout 120 env -u LD_LIBRARY_PATH ffmpeg -nostdin -loglevel error -y "$@"; }
 
 movie() { # $1 title, $2 resolution, $3 audio layout, $4 audio language, [$5 version suffix], [$6 audio title], [$7 seconds]
     local dir="$media/$1 (2024)"
@@ -74,3 +76,10 @@ fi
 [[ -f "$dir/poster.jpg" ]] || ff -f lavfi -i "testsrc2=size=1000x1500" -frames:v 1 "$dir/poster.jpg"
 printf '<?xml version="1.0" encoding="utf-8" standalone="yes"?>\n<movie>\n  <title>JT Subs</title>\n  <year>2024</year>\n</movie>\n' \
     >"$dir/JT Subs (2024).nfo"
+# Episodes take the thumbnail settings; the local "<file>-thumb.jpg" is their primary image.
+dir="$1/shows/JT Show/Season 01"
+mkdir -p "$dir"
+[[ -f "$dir/JT Show S01E01.mkv" ]] || ff -f lavfi -i "testsrc=duration=2:size=1920x1080:rate=24" \
+    -f lavfi -i "anullsrc=channel_layout=stereo:sample_rate=48000" -t 2 \
+    -c:v libx264 -pix_fmt yuv420p -c:a aac -metadata:s:a:0 language=eng "$dir/JT Show S01E01.mkv"
+[[ -f "$dir/JT Show S01E01-thumb.jpg" ]] || ff -f lavfi -i "testsrc2=size=1920x1080" -frames:v 1 "$dir/JT Show S01E01-thumb.jpg"

@@ -71,7 +71,8 @@ public partial class ImageOverlayMiddleware
             return;
         }
 
-        if (item is not (Movie or Series or Season or Episode or Video))
+        if (item is not (Movie or Series or Season or Episode or Video)
+            || (item is Episode && !config.ShowOnEpisodes))
         {
             await _next(context).ConfigureAwait(false);
             return;
