@@ -86,7 +86,7 @@ api POST "/Library/VirtualFolders?name=movies&collectionType=movies&paths=/media
 api POST /Library/Refresh
 
 scan_done() {
-    [[ $(api GET "/Items?Recursive=true&IncludeItemTypes=Movie" | jq .TotalRecordCount) == 6 ]] &&
+    [[ $(api GET "/Items?Recursive=true&IncludeItemTypes=Movie" | jq .TotalRecordCount) == 8 ]] &&
         api GET /ScheduledTasks | jq -e '.[] | select(.Key == "RefreshLibrary") | .State == "Idle"'
 }
 wait_for 180 "the library scan" scan_done
@@ -111,6 +111,8 @@ declare -A expected=(
     ["JT 1080p 4-3"]=1080p_h264_stereo_eng
     ["JT 720p"]=720p_h264_7.1_deu
     ["JT SD"]=sd_h264_jpn
+    ["JT VFQ"]=1080p_h264_stereo_vq
+    ["JT VFF"]=1080p_h264_stereo_vff
     ["JT Multi"]=4k_1080p_h264_5.1_stereo_eng_fra
 )
 declare -A rendered
@@ -125,7 +127,7 @@ done
 
 title="JT 4K"
 id=$(item "$title")
-check "cache: one rendered image per poster" 6 "$(api GET /JellyTag/CacheStats | jq .FileCount)"
+check "cache: one rendered image per poster" 8 "$(api GET /JellyTag/CacheStats | jq .FileCount)"
 check "cache: same image on the next request" "${rendered[$title]}" "$(served "$id")"
 
 plugin=$(api GET /Plugins | jq -r '.[] | select(.Name == "JellyTag") | .Id')
