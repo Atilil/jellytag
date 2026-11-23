@@ -21,10 +21,8 @@ description: >
 artifacts:
   - "Jellyfin.Plugin.JellyTag.dll"
 changelog: |
-  - Optional rating badges: TMDB/IMDb and Rotten Tomatoes ratings stored by
-    Jellyfin, with a star and a tomato icon (replaceable).
-  - Top center and bottom center positions; a panel can join the previous panel's
-    row; badge sizes up to 100%.
-  - Switch to leave episode images without badges.
-  - Fixes: a zero margin is kept, sizes above 50% are honoured, simpler video
-    length panel.
+  - Save no longer fails silently: an invalid setting turns red while typing, and
+    Save opens its section and points to it.
+  - Clearer settings: units in the size, margin and gap labels, shorter
+    descriptions, gap up to 100%.
+  - "Join the previous panel's row" is grayed out when it has no effect.
