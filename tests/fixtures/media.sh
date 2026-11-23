@@ -28,6 +28,13 @@ movie "JT 4K" 3840x2160 5.1 eng
 # Ratings as a metadata provider would store them (#11).
 printf '<?xml version="1.0" encoding="utf-8" standalone="yes"?>\n<movie>\n  <title>JT 4K</title>\n  <year>2024</year>\n  <rating>7.8</rating>\n  <criticrating>92</criticrating>\n</movie>\n' \
     >"$media/JT 4K (2024)/JT 4K (2024).nfo"
+# Backdrop and clear logo (#16). Like a real clear logo, the logo is transparent around its band.
+dir="$media/JT 4K (2024)"
+[[ -f "$dir/backdrop.jpg" ]] || ff -f lavfi -i "testsrc2=size=1920x1080" -frames:v 1 "$dir/backdrop.jpg"
+# geq sets the four channels; drawbox would leave the band transparent. Quoted for the commas.
+band="'255*between(X,200,599)*between(Y,100,199)'"
+[[ -f "$dir/logo.png" ]] || ff -f lavfi -i "color=c=black:size=800x300" \
+    -vf "format=rgba,geq=r=$band:g=0:b=0:a=$band" -frames:v 1 "$dir/logo.png"
 movie "JT 1080p" 1920x1080 stereo fra
 movie "JT 1080p 4-3" 1440x1080 stereo eng
 movie "JT 720p" 1280x720 7.1 deu

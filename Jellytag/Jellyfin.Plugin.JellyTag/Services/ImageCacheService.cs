@@ -24,10 +24,10 @@ public class ImageCacheService : IImageCacheService
     }
 
     /// <inheritdoc />
-    public Task<Stream?> GetCachedImageAsync(Guid itemId, string badgeKey, string imageTag)
+    public Task<Stream?> GetCachedImageAsync(Guid itemId, string badgeKey, string imageTag, Configuration.OutputImageFormat format)
     {
         var cacheKey = GenerateCacheKey(itemId, badgeKey, imageTag);
-        var cacheFilePath = GetCachePath(cacheKey);
+        var cacheFilePath = GetCachePath(cacheKey, format);
 
         if (!File.Exists(cacheFilePath))
         {
@@ -59,10 +59,10 @@ public class ImageCacheService : IImageCacheService
     }
 
     /// <inheritdoc />
-    public async Task CacheImageAsync(Guid itemId, string badgeKey, string imageTag, Stream imageStream)
+    public async Task CacheImageAsync(Guid itemId, string badgeKey, string imageTag, Stream imageStream, Configuration.OutputImageFormat format)
     {
         var cacheKey = GenerateCacheKey(itemId, badgeKey, imageTag);
-        var cachePath = GetCachePath(cacheKey);
+        var cachePath = GetCachePath(cacheKey, format);
         var tempPath = cachePath + ".tmp";
 
         try
@@ -108,9 +108,7 @@ public class ImageCacheService : IImageCacheService
             {
                 if (Directory.Exists(_cachePath))
                 {
-                    var jpgFiles = Directory.GetFiles(_cachePath, "*.jpg");
-                    var webpFiles = Directory.GetFiles(_cachePath, "*.webp");
-                    var files = jpgFiles.Concat(webpFiles).ToArray();
+                    var files = ImageEncoding.CacheExtensions.SelectMany(ext => Directory.GetFiles(_cachePath, "*" + ext)).ToArray();
                     foreach (var file in files)
                     {
                         try
@@ -138,9 +136,7 @@ public class ImageCacheService : IImageCacheService
     {
         try
         {
-            var jpgPattern = $"{itemId}_*.jpg";
-            var webpPattern = $"{itemId}_*.webp";
-            var files = Directory.GetFiles(_cachePath, jpgPattern).Concat(Directory.GetFiles(_cachePath, webpPattern)).ToArray();
+            var files = ImageEncoding.CacheExtensions.SelectMany(ext => Directory.GetFiles(_cachePath, $"{itemId}_*{ext}")).ToArray();
             foreach (var file in files)
             {
                 try
@@ -170,9 +166,10 @@ public class ImageCacheService : IImageCacheService
                 return (0, 0, null, null);
             }
 
-            var jpgFiles = Directory.GetFiles(_cachePath, "*.jpg");
-            var webpFiles = Directory.GetFiles(_cachePath, "*.webp");
-            var allFiles = jpgFiles.Concat(webpFiles).Select(f => new FileInfo(f)).ToArray();
+            var allFiles = ImageEncoding.CacheExtensions
+                .SelectMany(ext => Directory.GetFiles(_cachePath, "*" + ext))
+                .Select(f => new FileInfo(f))
+                .ToArray();
 
             if (allFiles.Length == 0)
             {
@@ -223,12 +220,8 @@ public class ImageCacheService : IImageCacheService
         return Convert.ToHexString(hashBytes)[..16];
     }
 
-    private string GetCachePath(string cacheKey)
-    {
-        var config = Plugin.Instance?.Configuration;
-        var ext = config?.OutputFormat == Configuration.OutputImageFormat.WebP ? ".webp" : ".jpg";
-        return Path.Combine(_cachePath, $"{cacheKey}{ext}");
-    }
+    private string GetCachePath(string cacheKey, Configuration.OutputImageFormat format) =>
+        Path.Combine(_cachePath, cacheKey + ImageEncoding.Extension(format));
 
     private void EnsureCacheDirectoryExists()
     {

@@ -126,7 +126,7 @@ public static class ConfigMigration
         return zone;
     }
 
-    private static BadgePanel ToPanel(PanelType type, BadgePanelSettings old) => new()
+    internal static BadgePanel ToPanel(PanelType type, BadgePanelSettings old) => new()
     {
         Type = type,
         ShowMode = old.ShowMode,

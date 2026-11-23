@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using Jellyfin.Plugin.JellyTag.Configuration;
 using Jellyfin.Plugin.JellyTag.Services;
+using MediaBrowser.Controller.Library;
 using MediaBrowser.Model.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -20,6 +21,7 @@ public partial class JellyTagController : ControllerBase
     private readonly IImageCacheService _cacheService;
     private readonly IImageOverlayService _overlayService;
     private readonly IQualityDetectionService _qualityService;
+    private readonly ILibraryManager _libraryManager;
 
     private static readonly string[] SupportedBadgeExtensions = { ".svg", ".png", ".jpg", ".jpeg" };
 
@@ -38,11 +40,62 @@ public partial class JellyTagController : ControllerBase
     /// <summary>
     /// Initializes a new instance of the <see cref="JellyTagController"/> class.
     /// </summary>
-    public JellyTagController(IImageCacheService cacheService, IImageOverlayService overlayService, IQualityDetectionService qualityService)
+    public JellyTagController(
+        IImageCacheService cacheService,
+        IImageOverlayService overlayService,
+        IQualityDetectionService qualityService,
+        ILibraryManager libraryManager)
     {
         _cacheService = cacheService;
         _overlayService = overlayService;
         _qualityService = qualityService;
+        _libraryManager = libraryManager;
+    }
+
+    /// <summary>
+    /// Settings a new panel or zone starts with on the configuration page, per image type.
+    /// </summary>
+    [HttpGet("PanelDefaults")]
+    [Authorize(Policy = "RequiresElevation")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public ActionResult<Dictionary<ImageType, PanelDefaults>> GetPanelDefaults() =>
+        new[] { ImageType.Primary, ImageType.Thumb, ImageType.Backdrop, ImageType.Logo }
+            .ToDictionary(t => t, PanelDefaults.For);
+
+    /// <summary>
+    /// Draws settings that are not saved yet on an image of an item. Nothing is saved or cached, so the
+    /// configuration page can show the profile being edited, whatever library the item is in.
+    /// </summary>
+    [HttpPost("Preview")]
+    [Authorize(Policy = "RequiresElevation")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Preview([FromBody] PreviewRequest request)
+    {
+        var config = Plugin.Instance?.Configuration;
+        if (config == null)
+        {
+            return BadRequest("Plugin not loaded");
+        }
+
+        var item = _libraryManager.GetItemById(request.ItemId);
+        var image = item?.GetImageInfo(request.ImageType, request.ImageIndex);
+
+        // Images Jellyfin has not downloaded yet only have a remote URL.
+        if (item == null || image == null || !image.IsLocalFile || !System.IO.File.Exists(image.Path))
+        {
+            return NotFound("This item has no such image");
+        }
+
+        var libraries = _libraryManager.GetCollectionFolders(item).Select(f => (Id: f.Id.ToString("N"), f.Name)).ToList();
+        var badges = _qualityService.DetectAllBadges(item)
+            .Concat(LibraryBadges.For(libraries, config))
+            .Where(b => _overlayService.ShouldShowBadge(b, request.Image))
+            .ToList();
+
+        await using var original = System.IO.File.OpenRead(image.Path);
+        var (stream, contentType) = await _overlayService.AddBadgeOverlaysAsync(original, badges, request.Image).ConfigureAwait(false);
+        return File(stream, contentType);
     }
 
     /// <summary>
@@ -477,4 +530,15 @@ public partial class JellyTagController : ControllerBase
 
         return NoContent();
     }
+}
+
+/// <summary>
+/// An image of an item, and the settings to draw on it.
+/// </summary>
+public class PreviewRequest
+{
+    public Guid ItemId { get; set; }
+    public ImageType ImageType { get; set; } = ImageType.Primary;
+    public int ImageIndex { get; set; }
+    public ProfileImageConfig Image { get; set; } = new();
 }

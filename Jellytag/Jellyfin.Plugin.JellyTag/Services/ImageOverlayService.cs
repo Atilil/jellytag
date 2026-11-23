@@ -166,20 +166,20 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
     public async Task<(Stream Stream, string ContentType)> AddBadgeOverlaysAsync(Stream originalImage, List<BadgeInfo> badges, ProfileImageConfig imageConfig)
     {
         var config = Plugin.Instance?.Configuration ?? new PluginConfiguration();
-        var jpegQuality = Math.Clamp(config.JpegQuality, 1, 100);
 
+        // SKBitmap.Decode(Stream) disposes the stream it reads, so the original is read once into
+        // bytes: the image is then served unchanged from them when there is nothing to draw.
         originalImage.Position = 0;
-        var sourceContentType = DetectImageContentType(originalImage);
-        originalImage.Position = 0;
+        using var buffer = new MemoryStream();
+        await originalImage.CopyToAsync(buffer).ConfigureAwait(false);
+        var originalBytes = buffer.ToArray();
+        buffer.Position = 0;
+        var sourceContentType = DetectImageContentType(buffer);
 
-        using var image = SKBitmap.Decode(originalImage);
+        using var image = SKBitmap.Decode(originalBytes);
         if (image == null)
         {
-            originalImage.Position = 0;
-            var output = new MemoryStream();
-            await originalImage.CopyToAsync(output).ConfigureAwait(false);
-            output.Position = 0;
-            return (output, sourceContentType);
+            return (new MemoryStream(originalBytes), sourceContentType);
         }
 
         var allPanelGroups = new List<PanelRenderGroup>();
@@ -210,16 +210,15 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
 
             if (allPanelGroups.Count == 0)
             {
-                originalImage.Position = 0;
-                var output = new MemoryStream();
-                await originalImage.CopyToAsync(output).ConfigureAwait(false);
-                output.Position = 0;
-                return (output, sourceContentType);
+                return (new MemoryStream(originalBytes), sourceContentType);
             }
 
             // Draw badges onto image
             using var surface = SKSurface.Create(new SKImageInfo(image.Width, image.Height));
             var canvas = surface.Canvas;
+
+            // A new surface holds undefined pixels: clear it so that a logo stays transparent.
+            canvas.Clear(SKColors.Transparent);
             canvas.DrawBitmap(image, 0, 0);
 
             using var paint = new SKPaint { IsAntialias = true };
@@ -234,11 +233,9 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
             canvas.Flush();
 
             using var resultImage = surface.Snapshot();
-            var outputFormat = config.OutputFormat;
-            var encodeFormat = outputFormat == OutputImageFormat.WebP ? SKEncodedImageFormat.Webp : SKEncodedImageFormat.Jpeg;
-            var encodeQuality = outputFormat == OutputImageFormat.WebP ? Math.Clamp(config.WebPQuality, 1, 100) : jpegQuality;
-            var contentType = outputFormat == OutputImageFormat.WebP ? "image/webp" : "image/jpeg";
-            using var data = resultImage.Encode(encodeFormat, encodeQuality);
+            var outputFormat = ImageEncoding.FormatFor(imageConfig.ImageType, config.OutputFormat);
+            var contentType = ImageEncoding.ContentType(outputFormat);
+            using var data = ImageEncoding.Encode(resultImage, outputFormat, config);
 
             var outputStream = new MemoryStream();
             data.SaveTo(outputStream);

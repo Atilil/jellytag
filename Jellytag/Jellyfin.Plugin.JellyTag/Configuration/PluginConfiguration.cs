@@ -41,7 +41,10 @@ public enum BadgeDisplayMode
 public enum OutputImageFormat
 {
     Jpeg,
-    WebP
+    WebP,
+
+    // Not offered on the configuration page: used for logos when the setting is JPEG.
+    Png
 }
 
 /// <summary>

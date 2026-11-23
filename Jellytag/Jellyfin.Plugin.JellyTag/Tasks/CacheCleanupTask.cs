@@ -61,8 +61,8 @@ public class CacheCleanupTask : IScheduledTask
         var cutoff = DateTime.UtcNow.AddHours(-cacheHours);
         var deletedCount = 0;
 
-        var files = Directory.GetFiles(cacheDir, "*.jpg")
-            .Concat(Directory.GetFiles(cacheDir, "*.webp"))
+        var files = ImageEncoding.CacheExtensions
+            .SelectMany(ext => Directory.GetFiles(cacheDir, "*" + ext))
             .ToArray();
 
         for (int i = 0; i < files.Length; i++)

@@ -254,6 +254,34 @@ check "custom flag: poster drawn with it" true "$(changed "$id" "${rendered[$tit
 api DELETE /JellyTag/CustomBadge/flag-eng
 check "custom flag: default flag back" "${rendered[$title]}" "$(served "$id")"
 
+# --- Backdrop and logo (#16): off by default, drawn once enabled, the logo stays transparent
+
+title="JT 4K"
+id=$(item "$title")
+folder="$work/media/movies/$title (2024)"
+check "backdrop: off by default" "$(md5sum <"$folder/backdrop.jpg" | cut -d' ' -f1)" "$(api GET "/Items/$id/Images/Backdrop/0" | md5sum | cut -d' ' -f1)"
+enable() { config "(profile | .Images[] | select(.ImageType == \"$1\")) |= (.Enabled = true | .Zones = [zone(\"TopLeft\"; {Type: \"Resolution\", Style: \"Text\", TextBgOpacity: 255, EnabledBadges: [\"4k\"]})])"; }
+enable Backdrop
+check "backdrop: badges drawn" true "$([[ $(api GET "/Items/$id/Images/Backdrop/0" | md5sum | cut -d' ' -f1) != $(md5sum <"$folder/backdrop.jpg" | cut -d' ' -f1) ]] && echo true || echo false)"
+
+enable Logo
+api GET "/Items/$id/Images/Logo" >"$work/logo.png"
+pixel() { env -u LD_LIBRARY_PATH ffmpeg -nostdin -loglevel error -i "$1" -vf "crop=1:1:$2:$3,format=rgba" -f rawvideo -frames:v 1 - | od -An -tu1 | awk '{print $4}'; }
+check "logo: served as PNG" PNG "$(head -c4 "$work/logo.png" | tail -c3)"
+check "logo: badge opaque" 255 "$(pixel "$work/logo.png" 40 40)"
+check "logo: transparent around the band" 0 "$(pixel "$work/logo.png" 790 290)"
+
+# --- Configuration page: defaults of a new panel, preview of settings that are not saved
+
+check "panel defaults: every category for the logo" 9 "$(api GET /JellyTag/PanelDefaults | jq '.Logo.Panels | length')"
+title="JT 4K"
+id=$(item "$title")
+saved=$(settings | jq -c "$paths poster")
+preview() { api POST /JellyTag/Preview "$(jq -nc --arg id "$id" --argjson image "$1" '{ItemId: $id, ImageType: "Primary", Image: $image}')" | md5sum | cut -d' ' -f1; }
+check "preview: saved settings, same image as the served poster" "$(served "$id")" "$(preview "$saved")"
+check "preview: no zones, original poster" "$(original "$title")" "$(preview "$(jq -c '.Zones = []' <<<"$saved")")"
+check "preview: nothing saved" "$saved" "$(settings | jq -c "$paths poster")"
+
 # --- Episodes (#22): drawn with the thumbnail settings, left alone when switched off
 
 episode=$(api GET "/Items?Recursive=true&IncludeItemTypes=Episode" | jq -r '.Items[0].Id')

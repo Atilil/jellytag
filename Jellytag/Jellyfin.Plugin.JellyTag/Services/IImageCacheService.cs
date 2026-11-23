@@ -11,8 +11,9 @@ public interface IImageCacheService
     /// <param name="itemId">The item ID.</param>
     /// <param name="badgeKey">The composite badge key (e.g. "4k_hdr10_atmos").</param>
     /// <param name="imageTag">The image tag/etag for cache invalidation.</param>
+    /// <param name="format">The format the image was encoded in.</param>
     /// <returns>The cached image stream, or null if not cached.</returns>
-    Task<Stream?> GetCachedImageAsync(Guid itemId, string badgeKey, string imageTag);
+    Task<Stream?> GetCachedImageAsync(Guid itemId, string badgeKey, string imageTag, Configuration.OutputImageFormat format);
 
     /// <summary>
     /// Caches an image.
@@ -21,7 +22,8 @@ public interface IImageCacheService
     /// <param name="badgeKey">The composite badge key.</param>
     /// <param name="imageTag">The image tag/etag.</param>
     /// <param name="imageStream">The image stream to cache.</param>
-    Task CacheImageAsync(Guid itemId, string badgeKey, string imageTag, Stream imageStream);
+    /// <param name="format">The format the image is encoded in.</param>
+    Task CacheImageAsync(Guid itemId, string badgeKey, string imageTag, Stream imageStream, Configuration.OutputImageFormat format);
 
     /// <summary>
     /// Clears all cached images.

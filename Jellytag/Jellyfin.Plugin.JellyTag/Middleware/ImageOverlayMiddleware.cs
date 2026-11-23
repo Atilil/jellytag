@@ -1,7 +1,6 @@
 using System.Text.RegularExpressions;
 using Jellyfin.Plugin.JellyTag.Configuration;
 using Jellyfin.Plugin.JellyTag.Services;
-using static Jellyfin.Plugin.JellyTag.Configuration.OutputImageFormat;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.Movies;
 using MediaBrowser.Controller.Entities.TV;
@@ -19,7 +18,7 @@ public partial class ImageOverlayMiddleware
     private readonly RequestDelegate _next;
     private readonly ILogger<ImageOverlayMiddleware> _logger;
 
-    [GeneratedRegex(@"/Items/([0-9a-f]{32}|[0-9a-f-]{36})/Images/(Primary|Thumb)(/\d+)?$", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"/Items/([0-9a-f]{32}|[0-9a-f-]{36})/Images/(Primary|Thumb|Backdrop|Logo)(/\d+)?$", RegexOptions.IgnoreCase)]
     private static partial Regex ImagePathRegex();
 
     public ImageOverlayMiddleware(RequestDelegate next, ILogger<ImageOverlayMiddleware> logger)
@@ -116,15 +115,16 @@ public partial class ImageOverlayMiddleware
 
         var query = context.Request.QueryString.Value ?? string.Empty;
         var tag = context.Request.Query["tag"].FirstOrDefault() ?? item.DateModified.Ticks.ToString();
-        var imageTag = $"{tag}_{imageType}_{query}_{BadgeSettingsResolver.Fingerprint(imageConfig)}";
+        // The index tells the backdrops of an item apart when the request carries no tag.
+        var imageTag = $"{tag}_{imageType}{match.Groups[3].Value}_{query}_{BadgeSettingsResolver.Fingerprint(imageConfig)}";
+        var outputFormat = ImageEncoding.FormatFor(imageConfig.ImageType, config.OutputFormat);
 
-        var cachedImage = await cacheService.GetCachedImageAsync(itemId, badgeKey, imageTag).ConfigureAwait(false);
+        var cachedImage = await cacheService.GetCachedImageAsync(itemId, badgeKey, imageTag, outputFormat).ConfigureAwait(false);
         if (cachedImage != null)
         {
             await using (cachedImage.ConfigureAwait(false))
             {
-                var cachedContentType = config.OutputFormat == OutputImageFormat.WebP ? "image/webp" : "image/jpeg";
-                context.Response.ContentType = cachedContentType;
+                context.Response.ContentType = ImageEncoding.ContentType(outputFormat);
                 context.Response.ContentLength = cachedImage.Length;
                 await cachedImage.CopyToAsync(context.Response.Body).ConfigureAwait(false);
             }
@@ -165,7 +165,7 @@ public partial class ImageOverlayMiddleware
             await using (result.resultStream.ConfigureAwait(false))
             {
                 result.resultStream.Position = 0;
-                await cacheService.CacheImageAsync(itemId, badgeKey, imageTag, result.resultStream).ConfigureAwait(false);
+                await cacheService.CacheImageAsync(itemId, badgeKey, imageTag, result.resultStream, outputFormat).ConfigureAwait(false);
 
                 result.resultStream.Position = 0;
                 context.Response.ContentType = result.contentType;
