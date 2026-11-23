@@ -232,22 +232,14 @@ public class QualityDetectionService : IQualityDetectionService
             // so scan all of them instead of only the first.
             var mediaSources = video.GetMediaSources(false) ?? new List<MediaSourceInfo>();
 
-            var merged = new List<BadgeInfo>();
-            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var merged = MergeVersionBadges(mediaSources, includeResolution);
+            var seen = new HashSet<string>(merged.Select(UniqueKey), StringComparer.OrdinalIgnoreCase);
 
             void AddUnique(BadgeInfo badge)
             {
-                if (seen.Add($"{badge.Category}:{badge.BadgeKey}"))
+                if (seen.Add(UniqueKey(badge)))
                 {
                     merged.Add(badge);
-                }
-            }
-
-            foreach (var mediaSource in mediaSources)
-            {
-                foreach (var badge in DetectBadgesFromMediaSource(mediaSource, includeResolution))
-                {
-                    AddUnique(badge);
                 }
             }
 
@@ -290,7 +282,7 @@ public class QualityDetectionService : IQualityDetectionService
 
             // Order best-first so the "Highest" display mode keeps the best badge across versions.
             // OrderBy is stable, so languages keep the order of the primary version first.
-            badges.AddRange(merged.OrderBy(GetBadgeRank));
+            badges.AddRange(OrderBestFirst(merged));
 
             if (mediaSources.Count > 1)
             {
@@ -302,6 +294,28 @@ public class QualityDetectionService : IQualityDetectionService
             _logger.LogWarning(ex, "Failed to detect badges for video: {ItemName}", video.Name);
         }
     }
+
+    private static string UniqueKey(BadgeInfo badge) => $"{badge.Category}:{badge.BadgeKey}";
+
+    /// <summary>
+    /// Badges of every version of an item, a badge found in several versions kept once.
+    /// </summary>
+    internal static List<BadgeInfo> MergeVersionBadges(IEnumerable<MediaSourceInfo> mediaSources, bool includeResolution)
+    {
+        var merged = new List<BadgeInfo>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var mediaSource in mediaSources)
+        {
+            merged.AddRange(DetectBadgesFromMediaSource(mediaSource, includeResolution).Where(b => seen.Add(UniqueKey(b))));
+        }
+
+        return merged;
+    }
+
+    /// <summary>
+    /// The "Highest" display mode keeps the first badge of a panel, so the order must be best first.
+    /// </summary>
+    internal static List<BadgeInfo> OrderBestFirst(IEnumerable<BadgeInfo> badges) => badges.OrderBy(GetBadgeRank).ToList();
 
     private static int GetBadgeRank(BadgeInfo badge)
     {

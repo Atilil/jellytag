@@ -204,11 +204,7 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
                         : b)
                     .ToList();
 
-                // Apply ShowMode filter: Highest = keep only the first (highest priority) badge
-                if (panel.ShowMode == BadgeDisplayMode.Highest && panelBadges.Count > 1)
-                {
-                    panelBadges = new List<BadgeInfo> { panelBadges[0] };
-                }
+                panelBadges = ApplyShowMode(panel.ShowMode, panelBadges);
 
                 var sizePercent = Math.Clamp(panel.SizePercent, MinBadgeSizePercent, MaxBadgeSizePercent);
                 var useText = panel.Style == BadgeStyle.Text;
@@ -294,6 +290,12 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
         public List<SKPointI> Positions { get; set; } = new();
         public ImageTypeConfig ImageConfig { get; set; } = null!;
     }
+
+    /// <summary>
+    /// "Highest" keeps the first badge: detection lists them best first (see OrderBestFirst).
+    /// </summary>
+    internal static List<BadgeInfo> ApplyShowMode(BadgeDisplayMode mode, List<BadgeInfo> badges) =>
+        mode == BadgeDisplayMode.Highest && badges.Count > 1 ? new List<BadgeInfo> { badges[0] } : badges;
 
     private static List<(BadgePanelSettings Panel, string Name)> GetOrderedPanels(ImageTypeConfig imageConfig)
     {
