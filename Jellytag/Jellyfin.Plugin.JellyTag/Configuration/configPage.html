@@ -282,6 +282,8 @@
             h += '</select></div>';
             return h;
         }
+        var SIZE_UNITS_HINT = '<div class="fieldDescription">Size and margin are a % of the image width, gap a % of the average badge height.</div>';
+        var RADIUS_UNITS_HINT = '<div class="fieldDescription">A % of the badge height: 50 gives a pill shape.</div>';
         function num(id, label, min, max, step) {
             return '<div class="inputContainer"><label class="inputLabel inputLabelUnfocused" for="' + id + '">' + label + '</label>' +
                 '<input id="' + id + '" type="number" min="' + min + '" max="' + max + '" step="' + step + '" is="emby-input" /></div>';
@@ -341,8 +343,8 @@
             h += '<div class="jellytag-row">' + sel(k + 'Position', 'Position', POS_OPTS);
             h += '<div id="' + k + 'LayoutWrap">' + sel(k + 'Layout', 'Layout', LAYOUT_OPTS) + '</div></div>';
             h += chk(k + 'Inline', 'Join the previous panel\'s row', 'Places these badges next to the previous panel at the same position. That panel must use the Horizontal layout; has no effect on the first panel of a position.');
-            h += '<div class="jellytag-row three"><div id="' + k + 'GapWrap">' + num(k + 'Gap', 'Gap (%)', 0, 50, 1) + '</div>';
-            h += num(k + 'Size', 'Size (%)', 5, 100, 1) + num(k + 'Margin', 'Margin (%)', 0, 20, 0.5) + '</div>';
+            h += '<div class="jellytag-row three"><div id="' + k + 'GapWrap">' + num(k + 'Gap', 'Gap (%)', 0, 100, 1) + '</div>';
+            h += num(k + 'Size', 'Size (%)', 5, 100, 1) + num(k + 'Margin', 'Margin (%)', 0, 20, 0.5) + '</div>' + SIZE_UNITS_HINT;
 
             // Customization of the checked badges only
             h += '<details class="jellytag-sub"><summary>Customize badges</summary><div class="jellytag-sub-body">';
@@ -375,7 +377,7 @@
             h += '</select></div>';
             h += colorAlpha(k + 'BgColor', k + 'BgOpacity', 'Background Color');
             h += colorOnly(k + 'TextColor', 'Text Color');
-            h += num(k + 'CornerRadius', 'Corner Radius (%)', 0, 50, 1);
+            h += num(k + 'CornerRadius', 'Corner Radius (%)', 0, 50, 1) + RADIUS_UNITS_HINT;
             h += '<button id="' + k + 'ResetText" type="button" is="emby-button" class="raised"><span>Reset to global</span></button>';
             h += '</div>'; // TextSettings
             h += '</div></details>';
@@ -409,12 +411,12 @@
             h += '<div class="jellytag-row">' + sel(k + 'Position', 'Position', POS_OPTS);
             h += sel(k + 'Layout', 'Layout', LAYOUT_OPTS) + '</div>';
             h += chk(k + 'Inline', 'Join the previous panel\'s row', 'Places these badges next to the previous panel at the same position. That panel must use the Horizontal layout; has no effect on the first panel of a position.');
-            h += '<div class="jellytag-row three">' + num(k + 'Gap', 'Gap (%)', 0, 50, 1);
-            h += num(k + 'Size', 'Size (%)', 5, 100, 1) + num(k + 'Margin', 'Margin (%)', 0, 20, 0.5) + '</div>';
+            h += '<div class="jellytag-row three">' + num(k + 'Gap', 'Gap (%)', 0, 100, 1);
+            h += num(k + 'Size', 'Size (%)', 5, 100, 1) + num(k + 'Margin', 'Margin (%)', 0, 20, 0.5) + '</div>' + SIZE_UNITS_HINT;
             h += '<div class="jellytag-text-box">';
             h += colorAlpha(k + 'BgColor', k + 'BgOpacity', 'Background Color');
             h += colorOnly(k + 'TextColor', 'Text Color');
-            h += num(k + 'CornerRadius', 'Corner Radius (%)', 0, 50, 1);
+            h += num(k + 'CornerRadius', 'Corner Radius (%)', 0, 50, 1) + RADIUS_UNITS_HINT;
             h += '</div>';
             h += '</div>'; // Settings
             h += '</div></details>';
@@ -431,13 +433,13 @@
             h += '<div class="jellytag-row">' + sel(k + 'Position', 'Position', POS_OPTS);
             h += '<div id="' + k + 'LayoutWrap">' + sel(k + 'Layout', 'Layout', LAYOUT_OPTS) + '</div></div>';
             h += chk(k + 'Inline', 'Join the previous panel\'s row', 'Places these badges next to the previous panel at the same position. That panel must use the Horizontal layout; has no effect on the first panel of a position.');
-            h += '<div class="jellytag-row three"><div id="' + k + 'GapWrap">' + num(k + 'Gap', 'Gap (%)', 0, 50, 1) + '</div>';
-            h += num(k + 'Size', 'Size (%)', 5, 100, 1) + num(k + 'Margin', 'Margin (%)', 0, 20, 0.5) + '</div>';
+            h += '<div class="jellytag-row three"><div id="' + k + 'GapWrap">' + num(k + 'Gap', 'Gap (%)', 0, 100, 1) + '</div>';
+            h += num(k + 'Size', 'Size (%)', 5, 100, 1) + num(k + 'Margin', 'Margin (%)', 0, 20, 0.5) + '</div>' + SIZE_UNITS_HINT;
             h += langFilterHTML(k);
             h += '<div id="' + k + 'TextSettings" class="jellytag-text-box hidden">';
             h += colorAlpha(k + 'BgColor', k + 'BgOpacity', 'Background Color');
             h += colorOnly(k + 'TextColor', 'Text Color');
-            h += num(k + 'CornerRadius', 'Corner Radius (%)', 0, 50, 1);
+            h += num(k + 'CornerRadius', 'Corner Radius (%)', 0, 50, 1) + RADIUS_UNITS_HINT;
             h += '</div>';
             h += '<details class="jellytag-sub"><summary>Customize flags</summary><div class="jellytag-sub-body">';
             h += '<div class="fieldDescription">Flags follow the audio language code: replace the English flag with the US flag, for example. Shared by posters and thumbnails.</div>';
