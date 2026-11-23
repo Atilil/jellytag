@@ -28,6 +28,7 @@
             .hidden { display: none !important; }
             .jellytag-invalid { outline: 2px solid #e57373 !important; outline-offset: -2px; }
             .jellytag-field-error { color: #e57373; font-size: .85em; margin-top: .3em; }
+            .checkboxContainer:has(input:disabled) .emby-checkbox-label { opacity: .45; }
             .jellytag-text-box { padding: .6em; border: 1px solid rgba(255,255,255,.08); border-radius: .3em; margin-top: .5em; }
             .jellytag-rgba { display: flex; gap: .5em; align-items: center; }
             .jellytag-rgba input[type="number"] { width: 80px; }
@@ -342,7 +343,7 @@
             }
             h += '<div class="jellytag-row">' + sel(k + 'Position', 'Position', POS_OPTS);
             h += '<div id="' + k + 'LayoutWrap">' + sel(k + 'Layout', 'Layout', LAYOUT_OPTS) + '</div></div>';
-            h += chk(k + 'Inline', 'Join the previous panel\'s row', 'Places these badges next to the previous panel at the same position. That panel must use the Horizontal layout; has no effect on the first panel of a position.');
+            h += chk(k + 'Inline', 'Join the previous panel\'s row (horizontal)');
             h += '<div class="jellytag-row three"><div id="' + k + 'GapWrap">' + num(k + 'Gap', 'Gap (%)', 0, 100, 1) + '</div>';
             h += num(k + 'Size', 'Size (%)', 5, 100, 1) + num(k + 'Margin', 'Margin (%)', 0, 20, 0.5) + '</div>' + SIZE_UNITS_HINT;
 
@@ -410,7 +411,7 @@
             h += langFilterHTML(k);
             h += '<div class="jellytag-row">' + sel(k + 'Position', 'Position', POS_OPTS);
             h += sel(k + 'Layout', 'Layout', LAYOUT_OPTS) + '</div>';
-            h += chk(k + 'Inline', 'Join the previous panel\'s row', 'Places these badges next to the previous panel at the same position. That panel must use the Horizontal layout; has no effect on the first panel of a position.');
+            h += chk(k + 'Inline', 'Join the previous panel\'s row (horizontal)');
             h += '<div class="jellytag-row three">' + num(k + 'Gap', 'Gap (%)', 0, 100, 1);
             h += num(k + 'Size', 'Size (%)', 5, 100, 1) + num(k + 'Margin', 'Margin (%)', 0, 20, 0.5) + '</div>' + SIZE_UNITS_HINT;
             h += '<div class="jellytag-text-box">';
@@ -432,7 +433,7 @@
             h += sel(k + 'Style', 'Badge Style', [{v:'Image',l:'Image'},{v:'Text',l:'Text'}]) + '</div>';
             h += '<div class="jellytag-row">' + sel(k + 'Position', 'Position', POS_OPTS);
             h += '<div id="' + k + 'LayoutWrap">' + sel(k + 'Layout', 'Layout', LAYOUT_OPTS) + '</div></div>';
-            h += chk(k + 'Inline', 'Join the previous panel\'s row', 'Places these badges next to the previous panel at the same position. That panel must use the Horizontal layout; has no effect on the first panel of a position.');
+            h += chk(k + 'Inline', 'Join the previous panel\'s row (horizontal)');
             h += '<div class="jellytag-row three"><div id="' + k + 'GapWrap">' + num(k + 'Gap', 'Gap (%)', 0, 100, 1) + '</div>';
             h += num(k + 'Size', 'Size (%)', 5, 100, 1) + num(k + 'Margin', 'Margin (%)', 0, 20, 0.5) + '</div>' + SIZE_UNITS_HINT;
             h += langFilterHTML(k);
@@ -478,6 +479,36 @@
                 var down = p.querySelector('.panel-move-down');
                 if (up) up.disabled = (i === 0);
                 if (down) down.disabled = (i === panels.length - 1);
+            });
+            refreshInlineStates(container);
+        }
+
+        // Mirrors JoinsLine in ImageOverlayService: a panel joins the last row at its position
+        // only if that row exists and the row's first panel is Horizontal. A panel that shows no
+        // badge for an item is skipped at render time, which the page cannot know.
+        function refreshInlineStates(container) {
+            var prefix = container.id.replace(/Panels$/, '');
+            var rowLayoutByPosition = {};
+            container.querySelectorAll(':scope > .jellytag-sub').forEach(function(p) {
+                var k = prefix + p.getAttribute('data-panel-id');
+                var inline = document.getElementById(k + 'Inline');
+                var layout = document.getElementById(k + 'Layout').value;
+                var position = document.getElementById(k + 'Position').value;
+                var rowLayout = rowLayoutByPosition[position];
+                var reason = rowLayout === undefined ? 'No effect: first enabled panel at this position.'
+                    : rowLayout !== 'Horizontal' ? 'No effect: this row starts with a Vertical panel.' : '';
+                inline.disabled = reason !== '';
+                var box = inline.closest('.checkboxContainer');
+                var desc = box.querySelector('.fieldDescription');
+                if (!desc) {
+                    desc = document.createElement('div');
+                    desc.className = 'fieldDescription';
+                    box.appendChild(desc);
+                }
+                desc.textContent = reason;
+                desc.classList.toggle('hidden', !reason);
+                if (!document.getElementById(k + 'Enabled').checked) return;
+                if (!(inline.checked && !reason)) rowLayoutByPosition[position] = layout;
             });
         }
         function sortPanelsByOrder(container, orderMap) {
@@ -1301,6 +1332,11 @@
             if (e.target.type !== 'number') return;
             markField(e.target);
             if (!configForm.querySelector('.jellytag-invalid')) saveError.classList.add('hidden');
+        });
+        configForm.addEventListener('change', function(e) {
+            if (!/(Enabled|Position|Layout|Inline)$/.test(e.target.id)) return;
+            var container = e.target.closest('[id$="Panels"]');
+            if (container) refreshInlineStates(container);
         });
 
         // The browser fires 'invalid' once per bad field, then cancels the submit; its own bubble
