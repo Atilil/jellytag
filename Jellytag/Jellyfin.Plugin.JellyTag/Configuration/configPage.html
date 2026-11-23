@@ -114,6 +114,8 @@
             .zone-add option { background: #1c1c1e; }
             .jellytag-editor { border: 1px solid rgba(255,255,255,.12); border-radius: .4em; padding: .8em 1em; }
             .jellytag-editor h4 { margin: 0 0 .6em; }
+            .jellytag-editor h4.jellytag-custom-title { margin: 1.2em 0 .3em; font-size: 1em; }
+            .badge-missing { display: flex; align-items: center; justify-content: center; width: 72px; height: 36px; color: #aaa; font-size: .7em; text-align: center; }
         </style>
         <div data-role="content">
             <div class="content-primary">
@@ -314,7 +316,9 @@
             card.setAttribute('data-badge-key', b.key);
             var img = document.createElement('img');
             var previewUrl = ApiClient.getUrl('JellyTag/BadgePreview/' + b.key);
-            img.src = previewUrl + '?t=' + Date.now() + (token ? '&ApiKey=' + token : ''); img.alt = b.label;
+            img.src = previewUrl + '?t=' + state.gallery.stamp + (token ? '&ApiKey=' + token : ''); img.alt = b.label;
+            // Library badges have no default image: without an upload, they are drawn as text.
+            img.addEventListener('error', function() { img.replaceWith(el('div', { class: 'badge-missing', text: 'Text until an image is uploaded' })); });
             card.appendChild(img);
             var lbl = document.createElement('div'); lbl.className = 'badge-label';
             lbl.textContent = b.label + (isCustom ? ' (custom)' : ''); card.appendChild(lbl);
@@ -339,18 +343,25 @@
             var headers = {}; if (token) headers['Authorization'] = 'MediaBrowser Token="' + token + '"';
             function getJson(path) { return fetch(ApiClient.getUrl(path), {headers:headers}).then(function(r){return r.json();}); }
             Promise.all([getJson('JellyTag/CustomBadges'), getJson('JellyTag/Flags')]).then(function(res) {
-                var customList = res[0], flags = res[1];
-                document.querySelectorAll('.badge-cards[data-keys]').forEach(function(box) {
-                    box.replaceChildren();
-                    box.getAttribute('data-keys').split(',').forEach(function(key) {
-                        addBadgeCard(box, {key:key, label:KEY_LABELS[key] || key}, customList, token);
-                    });
-                });
-                document.querySelectorAll('.flag-cards').forEach(function(box) {
-                    box.replaceChildren();
-                    flags.forEach(function(code) { addBadgeCard(box, {key:'flag-' + code, label:code}, customList, token); });
-                });
+                // A new stamp after each load: the browser fetches the images uploaded since then.
+                state.gallery = { custom: res[0], flags: res[1], stamp: Date.now() };
+                fillBadgeCards();
             }).catch(function(err) { console.error('[JellyTag] Badge gallery error:', err); });
+        }
+
+        // The editor is drawn again on every change: its cards come from the lists kept in memory.
+        function fillBadgeCards() {
+            var token = ApiClient.accessToken(), g = state.gallery;
+            document.querySelectorAll('.badge-cards[data-keys]').forEach(function(box) {
+                box.replaceChildren();
+                box.getAttribute('data-keys').split(',').forEach(function(key) {
+                    addBadgeCard(box, {key:key, label:box.getAttribute('data-label') || KEY_LABELS[key] || key}, g.custom, token);
+                });
+            });
+            document.querySelectorAll('.flag-cards').forEach(function(box) {
+                box.replaceChildren();
+                g.flags.forEach(function(code) { addBadgeCard(box, {key:'flag-' + code, label:code}, g.custom, token); });
+            });
         }
 
         function loadCacheStats() {
@@ -377,7 +388,8 @@
         var POSITION_LABELS = {TopLeft:'Top left', TopCenter:'Top center', TopRight:'Top right', MiddleLeft:'Middle left', MiddleCenter:'Middle center', MiddleRight:'Middle right', BottomLeft:'Bottom left', BottomCenter:'Bottom center', BottomRight:'Bottom right'};
 
         // editing: the zone ({kind: 'zone', position}) or panel ({kind: 'panel', type}) open under the grid.
-        var state = { config: null, libraries: [], defaults: null, profileId: DEFAULT_PROFILE_ID, tab: 'Primary', editing: null, dirty: false };
+        // colorKey: the badge whose text colors are edited, '' for the whole panel.
+        var state = { config: null, libraries: [], defaults: null, profileId: DEFAULT_PROFILE_ID, tab: 'Primary', editing: null, colorKey: '', gallery: { custom: [], flags: [], stamp: 0 }, dirty: false };
 
         function q(id) { return document.querySelector('#' + id); }
         function authHeaders() { var t = ApiClient.accessToken(); return t ? {'Authorization': 'MediaBrowser Token="' + t + '"'} : {}; }
@@ -417,10 +429,10 @@
                 options.map(function(o) { return el('option', { value: o.v, text: o.l, selected: !!o.selected }); }));
             return el('div', { class: 'inputContainer' }, [el('label', { class: 'inputLabel inputLabelUnfocused', for: id, text: label }), select]);
         }
-        function numberField(id, label, min, max, step, value) {
+        function numberField(id, label, min, max, step, value, attrs) {
             return el('div', { class: 'inputContainer' }, [
                 el('label', { class: 'inputLabel inputLabelUnfocused', for: id, text: label }),
-                el('input', { is: 'emby-input', id: id, type: 'number', min: min, max: max, step: step, value: value })
+                el('input', Object.assign({ is: 'emby-input', id: id, type: 'number', min: min, max: max, step: step, value: value }, attrs || {}))
             ]);
         }
         function checkField(id, label, description, checked) {
@@ -588,6 +600,7 @@
                 img.SameAs
                     ? el('div', { class: 'fieldDescription', text: 'Uses the ' + typeLabel(img.SameAs) + ' settings.' })
                     : el('div', { id: 'ZoneGrid' }, [renderGrid(img), renderEditor(img)]));
+            fillBadgeCards();
         }
 
         // ===== Placement =====
@@ -816,8 +829,294 @@
                         moveOptions.map(function(o) { return el('option', { value: o.v, text: o.l }); })),
                     actionButton('Remove', 'remove-panel', { 'data-type': editing.type })
                 ]),
-                el('div', { id: 'PanelSettings' })
+                el('div', { id: 'PanelSettings' }, renderPanelSettings(at.line.Panels[at.index]))
             ]);
+        }
+
+        // ===== Panel settings =====
+        // What a panel shows and how it looks. The fields depend on the panel type: PANEL_DEFS for the
+        // badge panels, special cases for the language, subtitle and library panels.
+        var DEF_OF_TYPE = { Resolution: 'Res', Hdr: 'Hdr', Codec: 'Codec', Audio: 'Audio', Runtime: 'Runtime', Rating: 'Rating' };
+        var COLOR_FIELDS = { BgColor: 'TextBgColor', BgOpacity: 'TextBgOpacity', TextColor: 'TextColor', CornerRadius: 'TextCornerRadius' };
+
+        function defOf(panel) { return PANEL_DEFS[DEF_OF_TYPE[panel.Type]]; }
+
+        // A checkbox can stand for several badge keys: "Channel layout" is 7.1, 5.1 and stereo.
+        function keysOfCheckbox(b) {
+            if (b.key === 'channel') return ['7.1', '5.1', 'stereo'];
+            return [b.key];
+        }
+        function isChecked(panel, b) {
+            return keysOfCheckbox(b).some(function(k) { return panel.EnabledBadges.indexOf(k) >= 0; });
+        }
+        function checkedBadges(panel) {
+            var def = defOf(panel);
+            if (!def) return [];
+            return def.single ? def.badges : def.badges.filter(function(b) { return isChecked(panel, b); });
+        }
+
+        function showModeOptions(panel) {
+            var def = defOf(panel);
+            if (def && def.hasShowMode) return def.showModeOptions;
+            if (panel.Type === 'Language') return [{ v: 'All', l: 'All' }, { v: 'Highest', l: 'Default only' }];
+            if (panel.Type === 'Library') return [{ v: 'Highest', l: 'First library only' }, { v: 'All', l: 'All libraries' }];
+            return null;
+        }
+        function isTextOnly(panel) { var def = defOf(panel); return panel.Type === 'Subtitle' || !!(def && def.textOnly); }
+        function isText(panel) { return isTextOnly(panel) || panel.Style === 'Text'; }
+
+        // Keys whose text colors can differ from the panel's: the checked badges. Badges computed per
+        // item (languages, subtitles, libraries) only have the panel's colors.
+        function colorKeys(panel) {
+            var keys = [];
+            checkedBadges(panel).forEach(function(b) {
+                if (b.key === 'runtime') return;
+                if (b.key === 'dvprofile') DV_PROFILES.forEach(function(p) { keys.push('dvp' + p); });
+                else keys = keys.concat(keysOfCheckbox(b));
+            });
+            return keys;
+        }
+        function overrideOf(panel, key) {
+            return (panel.BadgeTypeOverrides || []).filter(function(o) { return o.BadgeKey === key; })[0];
+        }
+        // The colors shown for the selected key: its own where it has them, the panel's otherwise.
+        function colorsOf(panel, key) {
+            var o = key ? overrideOf(panel, key) : null;
+            function pick(own, panelValue) { return own != null && own !== '' ? own : panelValue; }
+            return {
+                BgColor: pick(o && o.BgColor, panel.TextBgColor), BgOpacity: pick(o && o.BgOpacity, panel.TextBgOpacity),
+                TextColor: pick(o && o.TextColor, panel.TextColor), CornerRadius: pick(o && o.CornerRadius, panel.TextCornerRadius)
+            };
+        }
+        function setColor(panel, key, field, value) {
+            if (!key) { panel[COLOR_FIELDS[field]] = value; return; }
+            var colors = colorsOf(panel, key);
+            colors[field] = value;
+            panel.BadgeTypeOverrides = (panel.BadgeTypeOverrides || []).filter(function(o) { return o.BadgeKey !== key; });
+            // A badge styled like its panel needs no override.
+            var same = Object.keys(COLOR_FIELDS).every(function(f) { return String(colors[f]).toLowerCase() === String(panel[COLOR_FIELDS[f]]).toLowerCase(); });
+            if (!same) panel.BadgeTypeOverrides.push({ BadgeKey: key, BgColor: colors.BgColor, BgOpacity: colors.BgOpacity, TextColor: colors.TextColor, CornerRadius: colors.CornerRadius });
+        }
+
+        function customText(key) {
+            var t = (state.config.CustomBadgeTexts || []).filter(function(x) { return x.Key === key; })[0];
+            return t ? t.Text : '';
+        }
+        // Custom texts are global: the same key reads the same everywhere.
+        function setCustomText(key, text) {
+            var list = (state.config.CustomBadgeTexts || []).filter(function(x) { return x.Key !== key; });
+            if (text) list.push({ Key: key, Text: text });
+            state.config.CustomBadgeTexts = list;
+        }
+
+        function pf(field, kind) { return { 'data-pf': field, 'data-kind': kind }; }
+
+        function renderPanelSettings(panel) {
+            var def = defOf(panel), nodes = [];
+            var text = isText(panel);
+
+            // Badges
+            if (def && !def.single) {
+                nodes.push(el('div', { class: 'jellytag-grid' }, def.badges.map(function(b) {
+                    var box = checkField('Badge_' + b.id, b.label, null, isChecked(panel, b));
+                    box.querySelector('input').setAttribute('data-badge', b.key);
+                    return box;
+                })));
+            }
+
+            // Show and style
+            var row = [];
+            var modes = showModeOptions(panel);
+            if (modes) row.push(selectField('PanelShowMode', 'Show', modes.map(function(o) { return { v: o.v, l: o.l, selected: panel.ShowMode === o.v }; }), pf('ShowMode', 'str')));
+            if (panel.Type === 'Subtitle') {
+                row.push(selectField('PanelScope', 'Show', [
+                    { v: 'true', l: 'Languages without matching audio', selected: panel.SubtitlesWithoutAudioOnly !== false },
+                    { v: 'false', l: 'All subtitle languages', selected: panel.SubtitlesWithoutAudioOnly === false }
+                ], pf('SubtitlesWithoutAudioOnly', 'bool')));
+                row.push(selectField('PanelLabel', 'Label', [
+                    { v: 'Code', l: 'Language code (EN)', selected: panel.SubtitleLabel === 'Code' },
+                    { v: 'CcCode', l: 'CC + code (CC EN)', selected: panel.SubtitleLabel === 'CcCode' },
+                    { v: 'Vost', l: 'VOST (VOSTEN)', selected: panel.SubtitleLabel === 'Vost' }
+                ], pf('SubtitleLabel', 'str')));
+            }
+            if (!isTextOnly(panel)) {
+                row.push(selectField('PanelStyle', 'Badge style', [
+                    { v: 'Image', l: 'Image', selected: panel.Style !== 'Text' }, { v: 'Text', l: 'Text', selected: panel.Style === 'Text' }
+                ], pf('Style', 'str')));
+            }
+            if (row.length) nodes.push(el('div', { class: 'jellytag-row' }, row));
+
+            // Size and gap; one badge has no gap.
+            var single = (def && def.single) || (modes && panel.ShowMode === 'Highest');
+            nodes.push(el('div', { class: 'jellytag-row' }, [
+                numberField('PanelSize', 'Size (% image width)', 5, 100, 1, panel.SizePercent, pf('SizePercent', 'int')),
+                single ? null : numberField('PanelGap', 'Gap between badges (% badge width)', 0, 100, 1, panel.GapPercent, pf('GapPercent', 'float'))
+            ]));
+
+            if (panel.Type === 'Language' || panel.Type === 'Subtitle') nodes = nodes.concat(languageFilter(panel));
+            if (text) nodes.push(textColors(panel));
+            nodes = nodes.concat(customizations(panel));
+            return nodes;
+        }
+
+        function languageFilter(panel) {
+            var nodes = [];
+            var all = panel.LanguageFilter === 'All' || !panel.LanguageFilter;
+            var codes = panel.LanguageCodes || [];
+            var row = [selectField('PanelLangFilter', 'Languages', [
+                { v: 'All', l: 'All languages', selected: all },
+                { v: 'Only', l: 'Only these', selected: panel.LanguageFilter === 'Only' },
+                { v: 'Except', l: 'All except these', selected: panel.LanguageFilter === 'Except' }
+            ], pf('LanguageFilter', 'str'))];
+            if (!all) {
+                var free = cultures.filter(function(c) { return !codes.some(function(x) { return c.codes.indexOf(x) >= 0; }); });
+                row.push(selectField('PanelLangAdd', 'Add a language', [{ v: '', l: 'Add a language…' }].concat(free.map(function(c) { return { v: c.code, l: c.name }; })), { 'data-lang-add': 'true' }));
+            }
+            nodes.push(el('div', { class: 'jellytag-row' }, row));
+            if (!all) {
+                nodes.push(el('div', { class: 'lang-chips' }, codes.map(function(code) {
+                    var c = cultureOf(code);
+                    return el('span', { class: 'lang-chip' }, [c ? c.name : code,
+                        el('button', { type: 'button', title: 'Remove', 'data-action': 'lang-remove', 'data-code': code, text: '×' })]);
+                })));
+            }
+            var hide = checkField('PanelHideUnd', 'Hide undefined languages (und)', null, panel.HideUndefinedLanguage !== false);
+            hide.querySelector('input').setAttribute('data-pf', 'HideUndefinedLanguage');
+            hide.querySelector('input').setAttribute('data-kind', 'check');
+            nodes.push(hide);
+            return nodes;
+        }
+
+        function textColors(panel) {
+            var keys = colorKeys(panel);
+            if (keys.indexOf(state.colorKey) < 0) state.colorKey = '';
+            var colors = colorsOf(panel, state.colorKey);
+            var box = el('div', { class: 'jellytag-text-box' }, [
+                keys.length ? selectField('ColorKey', 'Colors for', [{ v: '', l: 'All badges of this panel', selected: !state.colorKey }].concat(keys.map(function(k) {
+                    // A dot marks the badges with their own colors.
+                    return { v: k, l: (overrideOf(panel, k) ? '• ' : '') + (KEY_LABELS[k] || k), selected: state.colorKey === k };
+                }))) : null,
+                el('div', { class: 'jellytag-row' }, [
+                    el('div', { class: 'inputContainer' }, [
+                        el('label', { class: 'inputLabel inputLabelUnfocused', text: 'Background color and opacity (0-255)' }),
+                        el('div', { class: 'jellytag-rgba' }, [
+                            el('input', { type: 'color', value: colors.BgColor, 'data-color': 'BgColor', title: 'Background color' }),
+                            el('input', { is: 'emby-input', type: 'number', min: 0, max: 255, step: 1, value: colors.BgOpacity, 'data-color': 'BgOpacity', title: 'Opacity' })
+                        ])
+                    ]),
+                    el('div', { class: 'inputContainer' }, [
+                        el('label', { class: 'inputLabel inputLabelUnfocused', text: 'Text color' }),
+                        el('input', { type: 'color', value: colors.TextColor, 'data-color': 'TextColor', title: 'Text color' })
+                    ])
+                ]),
+                numberField('PanelRadius', 'Corner radius (0-50)', 0, 50, 1, colors.CornerRadius, { 'data-color': 'CornerRadius' }),
+                state.colorKey ? actionButton('Use the panel colors', 'reset-colors') : null
+            ]);
+            return box;
+        }
+
+        // Custom images (image style, or the icons of the rating badges) and texts (text style).
+        function customizations(panel) {
+            var def = defOf(panel), text = isText(panel), images = [], texts = [];
+            if (panel.Type === 'Language') {
+                if (!text) images.push({ flags: true });
+            } else if (panel.Type === 'Library') {
+                state.libraries.forEach(function(l) {
+                    var key = 'library-' + String(l.Id).replace(/-/g, '').toLowerCase();
+                    if (text) texts.push({ key: key, label: l.Name, placeholder: l.Name });
+                    else images.push({ key: key, label: l.Name });
+                });
+            } else if (def) {
+                checkedBadges(panel).forEach(function(b) {
+                    var keys = customKeysOf(b);
+                    if (!text || def.iconImages) keys.images.forEach(function(k) { images.push({ key: k, label: KEY_LABELS[k] || k }); });
+                    if (text) keys.texts.forEach(function(k) { texts.push({ key: k, label: KEY_LABELS[k] || k, placeholder: DEFAULT_TEXTS[k] }); });
+                });
+            }
+            if (!images.length && !texts.length) return [];
+
+            var nodes = [el('h4', { class: 'jellytag-custom-title', text: 'Custom images and texts' }),
+                el('div', { class: 'fieldDescription', text: 'Shared by every profile and image type.' })];
+            if (images.length) {
+                nodes.push(el('div', { class: 'fieldDescription', text: 'Click a badge to replace its image (SVG, PNG or JPEG), × restores the default.' }));
+                nodes.push(images[0].flags
+                    ? el('div', { class: 'badge-cards flag-cards' })
+                    : el('div', { class: 'jellytag-custom-images' }, images.map(function(i) {
+                        return el('div', { class: 'badge-cards', 'data-keys': i.key, 'data-label': i.label });
+                    })));
+            }
+            if (texts.length) {
+                nodes.push(el('div', { class: 'jellytag-row three' }, texts.map(function(t) {
+                    return el('div', { class: 'inputContainer' }, [
+                        el('label', { class: 'inputLabel inputLabelUnfocused', text: t.label }),
+                        el('input', { is: 'emby-input', type: 'text', value: customText(t.key), placeholder: t.placeholder || '', 'data-text-key': t.key })
+                    ]);
+                })));
+            }
+            return nodes;
+        }
+
+        function togglePanelBadge(panel, key, on) {
+            var def = defOf(panel);
+            var b = def.badges.filter(function(x) { return x.key === key; })[0];
+            var keys = keysOfCheckbox(b);
+            panel.EnabledBadges = panel.EnabledBadges.filter(function(k) { return keys.indexOf(k) < 0; });
+            if (on) panel.EnabledBadges = panel.EnabledBadges.concat(keys);
+        }
+
+        function selectedPanel() {
+            var e = state.editing;
+            if (!e || e.kind !== 'panel') return null;
+            var at = locate(currentImage(), e.type);
+            return at ? at.line.Panels[at.index] : null;
+        }
+
+        // Returns true when the change belonged to the panel editor.
+        function onPanelSettingChange(field) {
+            var panel = selectedPanel();
+            if (!panel || !field.closest('#PanelSettings')) return false;
+            var redraw = true;
+            if (field.hasAttribute('data-pf')) {
+                var kind = field.getAttribute('data-kind'), name = field.getAttribute('data-pf');
+                panel[name] = kind === 'int' ? parseInt(field.value, 10) : kind === 'float' ? parseFloat(field.value)
+                    : kind === 'bool' ? field.value === 'true' : kind === 'check' ? field.checked : field.value;
+                redraw = kind === 'str' || kind === 'bool' || kind === 'check';
+            } else if (field.hasAttribute('data-badge')) {
+                togglePanelBadge(panel, field.getAttribute('data-badge'), field.checked);
+            } else if (field.id === 'ColorKey') {
+                state.colorKey = field.value;
+                renderImageTab();
+                return true;
+            } else if (field.hasAttribute('data-color')) {
+                var c = field.getAttribute('data-color');
+                setColor(panel, state.colorKey, c, field.type === 'number' ? parseInt(field.value, 10) : field.value);
+            } else if (field.hasAttribute('data-lang-add')) {
+                if (!field.value) return true;
+                panel.LanguageCodes = (panel.LanguageCodes || []).concat([field.value]);
+            } else if (field.hasAttribute('data-text-key')) {
+                setCustomText(field.getAttribute('data-text-key'), field.value.trim());
+                redraw = false;
+            } else {
+                return false;
+            }
+            markDirty();
+            if (redraw) renderImageTab();
+            return true;
+        }
+
+        function onPanelSettingClick(action, target) {
+            var panel = selectedPanel();
+            if (!panel) return;
+            if (action === 'lang-remove') {
+                var code = target.getAttribute('data-code');
+                panel.LanguageCodes = (panel.LanguageCodes || []).filter(function(x) { return x !== code; });
+            } else if (action === 'reset-colors') {
+                panel.BadgeTypeOverrides = (panel.BadgeTypeOverrides || []).filter(function(o) { return o.BadgeKey !== state.colorKey; });
+            } else {
+                return;
+            }
+            markDirty();
+            renderImageTab();
         }
 
         // ===== Events =====
@@ -837,7 +1136,8 @@
             else if (action === 'lib-down') moveLibrary(index, 1);
             else if (action === 'tab') { state.tab = target.getAttribute('data-tab'); state.editing = null; renderTabs(); renderImageTab(); }
             else if (action === 'edit-zone') { state.editing = { kind: 'zone', position: target.getAttribute('data-position') }; renderImageTab(); }
-            else if (action === 'edit-panel') { state.editing = { kind: 'panel', type: target.getAttribute('data-type') }; renderImageTab(); }
+            else if (action === 'edit-panel') { state.editing = { kind: 'panel', type: target.getAttribute('data-type') }; state.colorKey = ''; renderImageTab(); }
+            else if (action === 'lang-remove' || action === 'reset-colors') onPanelSettingClick(action, target);
             else if (action === 'move-inline') moveInLine(target.getAttribute('data-type'), parseInt(target.getAttribute('data-delta'), 10));
             else if (action === 'move-across') moveAcross(target.getAttribute('data-type'), parseInt(target.getAttribute('data-delta'), 10));
             else if (action === 'remove-panel') removePanel(target.getAttribute('data-type'));
@@ -851,6 +1151,7 @@
 
             // An out-of-range number stays out of the settings: Save then reports it (see below).
             if (field.type === 'number' && !field.validity.valid) return;
+            if (onPanelSettingChange(field)) return;
             var global = field.getAttribute('data-global');
             if (global) {
                 state.config[global] = field.type === 'checkbox' ? field.checked : field.type === 'number' ? parseInt(field.value, 10) : field.value;
