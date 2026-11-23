@@ -122,7 +122,9 @@ public class QualityDetectionService : IQualityDetectionService
                 _badgeCache.TryRemove(key, out _);
             }
         }
-        return badges;
+
+        // A copy, like on a cache hit: callers add to the list they get.
+        return new List<BadgeInfo>(badges);
     }
 
     /// <inheritdoc />

@@ -48,7 +48,12 @@ public enum BadgeCategory
     /// <summary>
     /// Rating badges stored in the item's metadata.
     /// </summary>
-    Rating
+    Rating,
+
+    /// <summary>
+    /// Library that holds the item.
+    /// </summary>
+    Library
 }
 
 /// <summary>

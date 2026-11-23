@@ -77,6 +77,7 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
         BadgeCategory.Subtitle => PanelType.Subtitle,
         BadgeCategory.Runtime => PanelType.Runtime,
         BadgeCategory.Rating => PanelType.Rating,
+        BadgeCategory.Library => PanelType.Library,
         _ => PanelType.Resolution
     };
 
@@ -103,6 +104,12 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
         if (badge.Category == BadgeCategory.Language)
         {
             return IsLanguageShown(badge.BadgeKey, panel);
+        }
+
+        // Library keys depend on the server: a placed library panel shows them all.
+        if (badge.Category == BadgeCategory.Library)
+        {
+            return true;
         }
 
         if (badge.Category == BadgeCategory.Subtitle)
@@ -530,6 +537,21 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
         }
 
         var customDir = GetCustomBadgeDir();
+
+        // Uploads for keys that have no embedded image, such as library badges ("badge-library-<id>").
+        if (customDir != null && Directory.Exists(customDir))
+        {
+            foreach (var file in Directory.EnumerateFiles(customDir))
+            {
+                var extension = Path.GetExtension(file).ToLowerInvariant();
+                var stem = Path.GetFileNameWithoutExtension(file);
+                if ((stem.StartsWith("badge-", StringComparison.OrdinalIgnoreCase) || stem.StartsWith("flag-", StringComparison.OrdinalIgnoreCase))
+                    && extension is ".svg" or ".png" or ".jpg" or ".jpeg")
+                {
+                    badgeBaseNames.Add(stem);
+                }
+            }
+        }
 
         foreach (var baseName in badgeBaseNames)
         {

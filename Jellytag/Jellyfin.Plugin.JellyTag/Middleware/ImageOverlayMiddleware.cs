@@ -79,8 +79,8 @@ public partial class ImageOverlayMiddleware
         }
 
         // Items outside every library (intros added by plugins such as Local Intros) get no profile.
-        var libraryIds = libraryManager.GetCollectionFolders(item).Select(f => f.Id.ToString("N")).ToList();
-        var profile = BadgeSettingsResolver.ResolveProfile(config, libraryIds);
+        var libraries = libraryManager.GetCollectionFolders(item).Select(f => (Id: f.Id.ToString("N"), f.Name)).ToList();
+        var profile = BadgeSettingsResolver.ResolveProfile(config, libraries.Select(l => l.Id).ToList());
         if (profile == null || (item is Episode && !profile.ShowOnEpisodes))
         {
             await _next(context).ConfigureAwait(false);
@@ -97,7 +97,7 @@ public partial class ImageOverlayMiddleware
         }
 
         // Detect all badges and filter by config
-        var allBadges = qualityService.DetectAllBadges(item);
+        var allBadges = qualityService.DetectAllBadges(item).Concat(LibraryBadges.For(libraries, config)).ToList();
         _logger.LogDebug("DetectAllBadges for {Item}: {Count} badges found: {Badges}",
             item.Name, allBadges.Count, string.Join(", ", allBadges.Select(b => $"{b.Category}:{b.BadgeKey}")));
 

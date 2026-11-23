@@ -153,7 +153,8 @@ check "cache: same image on the next request" "${rendered[$title]}" "$(served "$
 plugin=$(api GET /Plugins | jq -r '.[] | select(.Name == "JellyTag") | .Id')
 
 # jq paths into the settings: the default profile, its poster settings, one panel by type.
-# The API writes GUIDs without dashes.
+# The API writes GUIDs without dashes. The $ names are jq variables, not shell ones.
+# shellcheck disable=SC2016
 paths='
 def profile: .Profiles[] | select(.Id == "daeb47a3cbe444559dd2aa166fd7fcb1");
 def poster: profile | .Images[] | select(.ImageType == "Primary");
@@ -215,6 +216,20 @@ config "(panel(\"Resolution\") | .SizePercent) = $size"
 config '(poster | .Zones) += [zone("BottomLeft"; {Type: "Rating", Style: "Text", ShowMode: "All", EnabledBadges: ["rating", "critic"]})]'
 check "ratings: poster drawn again" true "$(changed "$id" "${rendered[$title]}")"
 check "ratings: community and critic badges" "$(sorted <<<"${expected[$title]}_rating_critic")" "$(badges "$title")"
+config 'del(poster | .Zones[] | select(.Position == "BottomLeft"))'
+
+# --- Library badge (#20): the library name as text, an uploaded image replaces it in image style
+
+library=$(api GET /Library/VirtualFolders | jq -r '.[] | select(.Name == "movies") | .ItemId')
+config '(poster | .Zones) += [zone("BottomLeft"; {Type: "Library", Style: "Text"})]'
+served "$id" >/dev/null
+check "library: badge added" "$(sorted <<<"${expected[$title]}_library-$library")" "$(badges "$title")"
+config '(panel("Library") | .Style) = "Image"'
+fallback=$(served "$id")
+upload "library-$library" <<<'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 90 30"><rect width="90" height="30" fill="#2a7"/></svg>'
+check "library: uploaded image drawn" true "$(changed "$id" "$fallback")"
+api DELETE "/JellyTag/CustomBadge/library-$library"
+check "library: text again without the image" "$fallback" "$(served "$id")"
 config 'del(poster | .Zones[] | select(.Position == "BottomLeft"))'
 
 # --- Rows and side-by-side columns: both change the poster, the previous settings restore it
