@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using Jellyfin.Plugin.JellyTag.Configuration;
 using Jellyfin.Plugin.JellyTag.Services;
+using MediaBrowser.Model.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -84,12 +85,14 @@ public partial class JellyTagController : ControllerBase
     public IActionResult GetStatus()
     {
         var config = Plugin.Instance?.Configuration;
+        var images = config?.Profiles.FirstOrDefault(p => p.Id == BadgeProfile.DefaultProfileId)?.Images;
+        bool IsEnabled(ImageType type) => images?.FirstOrDefault(i => i.ImageType == type)?.Enabled ?? false;
         return Ok(new
         {
             Enabled = config?.Enabled ?? false,
-            PosterEnabled = config?.PosterConfig?.Enabled ?? false,
-            ThumbnailEnabled = config?.ThumbnailConfig?.Enabled ?? false,
-            ThumbnailSameAsPoster = config?.ThumbnailSameAsPoster ?? false,
+            PosterEnabled = IsEnabled(ImageType.Primary),
+            ThumbnailEnabled = IsEnabled(ImageType.Thumb),
+            ThumbnailSameAsPoster = images?.FirstOrDefault(i => i.ImageType == ImageType.Thumb)?.SameAs == ImageType.Primary,
             OutputFormat = config?.OutputFormat.ToString() ?? "Jpeg"
         });
     }

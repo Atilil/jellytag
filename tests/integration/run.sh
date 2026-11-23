@@ -152,72 +152,80 @@ check "cache: same image on the next request" "${rendered[$title]}" "$(served "$
 
 plugin=$(api GET /Plugins | jq -r '.[] | select(.Name == "JellyTag") | .Id')
 
-# --- Optional video length badge, off by default
+# jq paths into the settings: the default profile, its poster settings, one panel by type.
+# The API writes GUIDs without dashes.
+paths='
+def profile: .Profiles[] | select(.Id == "daeb47a3cbe444559dd2aa166fd7fcb1");
+def poster: profile | .Images[] | select(.ImageType == "Primary");
+def panel($type): poster | .Zones[].Lines[].Panels[] | select(.Type == $type);
+def zone($position; $panel): {Position: $position, Arrangement: "Columns", Lines: [{Panels: [$panel]}]};'
+settings() { api GET "/Plugins/$plugin/Configuration"; }
+config() { api POST "/Plugins/$plugin/Configuration" "$(settings | jq -c "$paths $1")"; }
+changed() { [[ $(served "$1") != "$2" ]] && echo true || echo false; }
 
-api POST "/Plugins/$plugin/Configuration" "$(api GET "/Plugins/$plugin/Configuration" | jq -c '.PosterConfig.RuntimePanel.Enabled = true')"
+# --- Optional video length badge: a panel added to a zone
+
+config '(poster | .Zones) += [zone("BottomRight"; {Type: "Runtime", Style: "Text", EnabledBadges: ["runtime"]})]'
 title="JT Long"
 id=$(item "$title")
-before=${rendered[$title]}
-check "runtime: poster rendered again" true "$([[ $(served "$id") != "$before" ]] && echo true || echo false)"
+check "runtime: poster rendered again" true "$(changed "$id" "${rendered[$title]}")"
 check "runtime: badge added" "$(sorted <<<"${expected[$title]}_runtime")" "$(badges "$title")"
 
 # --- HDR panel: "Highest only" (default) draws HDR10 alone, "All" adds the 3D badge
 
-api POST "/Plugins/$plugin/Configuration" "$(api GET "/Plugins/$plugin/Configuration" | jq -c '.PosterConfig.HdrPanel.ShowMode = "All"')"
+config '(panel("Hdr") | .ShowMode) = "All"'
 title="JT HDR 3D"
-check "hdr panel all: second badge drawn" true "$([[ $(served "$(item "$title")") != "${rendered[$title]}" ]] && echo true || echo false)"
+check "hdr panel all: second badge drawn" true "$(changed "$(item "$title")" "${rendered[$title]}")"
 title="JT 1080p"
 check "hdr panel all: poster without HDR unchanged" "${rendered[$title]}" "$(served "$(item "$title")")"
 
 # --- Language filters (#6) and subtitle panel (#7)
 
-config() { api POST "/Plugins/$plugin/Configuration" "$(api GET "/Plugins/$plugin/Configuration" | jq -c "$1")"; }
 title="JT Subs"
 id=$(item "$title")
-config '.PosterConfig.LanguagePanel.LanguageFilter = "Except" | .PosterConfig.LanguagePanel.LanguageCodes = ["eng"]'
+config '(panel("Language") | .LanguageFilter) = "Except" | (panel("Language") | .LanguageCodes) = ["eng"]'
 served "$id" >/dev/null
 check "language filter: English audio hidden" "$(sorted <<<1080p_h264_stereo_subfra)" "$(badges "$title")"
-config '.PosterConfig.SubtitlePanel.SubtitlesWithoutAudioOnly = false'
+config '(panel("Subtitle") | .SubtitlesWithoutAudioOnly) = false'
 served "$id" >/dev/null
 check "subtitle panel: all subtitle languages" "$(sorted <<<1080p_h264_stereo_subeng_subfra)" "$(badges "$title")"
-config '.PosterConfig.LanguagePanel.LanguageFilter = "All" | .PosterConfig.SubtitlePanel.SubtitlesWithoutAudioOnly = true'
+config '(panel("Language") | .LanguageFilter) = "All" | (panel("Subtitle") | .SubtitlesWithoutAudioOnly) = true'
 
-# --- Centered position (#22): the resolution badge moves, moving it back restores the poster
+# --- Centered position (#22): the zone moves, moving it back restores the poster
 
 title="JT 4K"
 id=$(item "$title")
-position=$(api GET "/Plugins/$plugin/Configuration" | jq -r .PosterConfig.ResolutionPanel.Position)
-config '.PosterConfig.ResolutionPanel.Position = "TopCenter"'
-check "centered position: saved" TopCenter "$(api GET "/Plugins/$plugin/Configuration" | jq -r .PosterConfig.ResolutionPanel.Position)"
-check "centered position: poster drawn again" true "$([[ $(served "$id") != "${rendered[$title]}" ]] && echo true || echo false)"
-config ".PosterConfig.ResolutionPanel.Position = \"$position\""
+config '(poster | .Zones[] | select(.Position == "TopLeft") | .Position) = "TopCenter"'
+check "centered position: saved" true "$(settings | jq "$paths [poster | .Zones[].Position] | any(. == \"TopCenter\")")"
+check "centered position: poster drawn again" true "$(changed "$id" "${rendered[$title]}")"
+config '(poster | .Zones[] | select(.Position == "TopCenter") | .Position) = "TopLeft"'
 check "centered position: previous poster back" "${rendered[$title]}" "$(served "$id")"
 
 # --- Badge size (#22): the page offers up to 100 %, the server must not cap it lower
 
-size=$(api GET "/Plugins/$plugin/Configuration" | jq -r .PosterConfig.ResolutionPanel.SizePercent)
-config '.PosterConfig.ResolutionPanel.SizePercent = 50'
+size=$(settings | jq "$paths panel(\"Resolution\") | .SizePercent")
+config '(panel("Resolution") | .SizePercent) = 50'
 half=$(served "$id")
-config '.PosterConfig.ResolutionPanel.SizePercent = 80'
-check "badge size: 80 % larger than 50 %" true "$([[ $(served "$id") != "$half" ]] && echo true || echo false)"
-config ".PosterConfig.ResolutionPanel.SizePercent = $size"
+config '(panel("Resolution") | .SizePercent) = 80'
+check "badge size: 80 % larger than 50 %" true "$(changed "$id" "$half")"
+config "(panel(\"Resolution\") | .SizePercent) = $size"
 
-# --- Ratings (#11): read from the .nfo, drawn when the panel is enabled
+# --- Ratings (#11): read from the .nfo, drawn when the panel is placed
 
-config '.PosterConfig.RatingPanel.Enabled = true'
-check "ratings: poster drawn again" true "$([[ $(served "$id") != "${rendered[$title]}" ]] && echo true || echo false)"
+config '(poster | .Zones) += [zone("BottomLeft"; {Type: "Rating", Style: "Text", ShowMode: "All", EnabledBadges: ["rating", "critic"]})]'
+check "ratings: poster drawn again" true "$(changed "$id" "${rendered[$title]}")"
 check "ratings: community and critic badges" "$(sorted <<<"${expected[$title]}_rating_critic")" "$(badges "$title")"
-config '.PosterConfig.RatingPanel.Enabled = false'
+config 'del(poster | .Zones[] | select(.Position == "BottomLeft"))'
 
-# --- Same row (#9): the codec badge joins the resolution row; a column has no row to join
+# --- Rows and side-by-side columns: both change the poster, the previous settings restore it
 
-config '.PosterConfig.CodecPanel.InlineWithPrevious = true'
-check "same row: after a column, poster unchanged" "${rendered[$title]}" "$(served "$id")"
-config '.PosterConfig.ResolutionPanel.Layout = "Horizontal" | .PosterConfig.CodecPanel.InlineWithPrevious = false'
-row=$(served "$id")
-config '.PosterConfig.CodecPanel.InlineWithPrevious = true'
-check "same row: codec badge moved next to the resolution" true "$([[ $(served "$id") != "$row" ]] && echo true || echo false)"
-config '.PosterConfig.ResolutionPanel.Layout = "Vertical" | .PosterConfig.CodecPanel.InlineWithPrevious = false'
+before=$(settings)
+config '(poster | .Zones[] | select(.Position == "TopLeft") | .Arrangement) = "Rows"'
+check "rows: poster drawn again" true "$(changed "$id" "${rendered[$title]}")"
+config '(poster | .Zones[] | select(.Position == "TopLeft")) |= (.Arrangement = "Columns" | .Lines = [{Panels: [.Lines[0].Panels[0]]}, {Panels: .Lines[0].Panels[1:]}])'
+check "columns: two columns side by side" true "$(changed "$id" "${rendered[$title]}")"
+api POST "/Plugins/$plugin/Configuration" "$before"
+check "columns: previous poster back" "${rendered[$title]}" "$(served "$id")"
 
 # --- Custom flag: an uploaded flag-eng replaces the English flag, deleting it restores the default
 
@@ -227,7 +235,7 @@ custom='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 90 60"><rect width=
 upload flag-eng <<<"$custom"
 check "custom flag: listed" true "$(api GET /JellyTag/CustomBadges | jq 'any(. == "flag-eng")')"
 check "custom flag: preview serves it" "$(md5sum <<<"$custom" | cut -d' ' -f1)" "$(api GET /JellyTag/BadgePreview/flag-eng | md5sum | cut -d' ' -f1)"
-check "custom flag: poster drawn with it" true "$([[ $(served "$id") != "${rendered[$title]}" ]] && echo true || echo false)"
+check "custom flag: poster drawn with it" true "$(changed "$id" "${rendered[$title]}")"
 api DELETE /JellyTag/CustomBadge/flag-eng
 check "custom flag: default flag back" "${rendered[$title]}" "$(served "$id")"
 
@@ -236,9 +244,9 @@ check "custom flag: default flag back" "${rendered[$title]}" "$(served "$id")"
 episode=$(api GET "/Items?Recursive=true&IncludeItemTypes=Episode" | jq -r '.Items[0].Id')
 thumb=$(md5sum "$work/media/shows/JT Show/Season 01/JT Show S01E01-thumb.jpg" | cut -d' ' -f1)
 check "episode: thumbnail has badges" true "$([[ $(served "$episode") != "$thumb" ]] && echo true || echo false)"
-config '.ShowOnEpisodes = false'
+config '(profile | .ShowOnEpisodes) = false'
 check "episode: switched off, original thumbnail" "$thumb" "$(served "$episode")"
-config '.ShowOnEpisodes = true'
+config '(profile | .ShowOnEpisodes) = true'
 
 api POST "/Plugins/$plugin/Configuration" "$(api GET "/Plugins/$plugin/Configuration" | jq -c '.Enabled = false')"
 check "disabled: original poster served" "$(original "$title")" "$(served "$id")"

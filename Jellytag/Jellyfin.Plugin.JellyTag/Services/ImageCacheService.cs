@@ -204,14 +204,13 @@ public class ImageCacheService : IImageCacheService
         return $"{itemId}_{hash}";
     }
 
+    // Settings that change every image. The settings of the image type itself are in the image tag
+    // given by the middleware (BadgeSettingsResolver.Fingerprint).
     private static string ComputeConfigFingerprint(Configuration.PluginConfiguration config)
     {
         var sb = new StringBuilder(256);
         sb.Append(config.Enabled).Append('|');
         sb.Append((int)config.OutputFormat).Append(config.JpegQuality).Append(config.WebPQuality).Append('|');
-        sb.Append(config.ThumbnailSameAsPoster).Append('|');
-        AppendImageTypeFingerprint(sb, config.PosterConfig);
-        AppendImageTypeFingerprint(sb, config.ThumbnailConfig);
         if (config.CustomBadgeTexts != null)
         {
             foreach (var cbt in config.CustomBadgeTexts)
@@ -222,41 +221,6 @@ public class ImageCacheService : IImageCacheService
 
         var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(sb.ToString()));
         return Convert.ToHexString(hashBytes)[..16];
-    }
-
-    private static void AppendImageTypeFingerprint(StringBuilder sb, Configuration.ImageTypeConfig c)
-    {
-        sb.Append(c.Enabled).Append('|');
-        AppendPanelFingerprint(sb, c.ResolutionPanel);
-        AppendPanelFingerprint(sb, c.HdrPanel);
-        AppendPanelFingerprint(sb, c.CodecPanel);
-        AppendPanelFingerprint(sb, c.AudioPanel);
-        AppendPanelFingerprint(sb, c.LanguagePanel);
-        AppendPanelFingerprint(sb, c.RuntimePanel);
-        AppendPanelFingerprint(sb, c.RatingPanel);
-        if (c.SubtitlePanel != null) AppendPanelFingerprint(sb, c.SubtitlePanel);
-        sb.Append(c.ShowVostIndicator).Append(c.VostBgColor ?? "n").Append(c.VostTextColor ?? "n");
-        sb.Append(c.VostBgOpacity).Append(c.VostCornerRadius).Append('|');
-    }
-
-    private static void AppendPanelFingerprint(StringBuilder sb, Configuration.BadgePanelSettings p)
-    {
-        sb.Append(p.Enabled).Append((int)p.Position).Append((int)p.ShowMode);
-        sb.Append((int)p.Layout).Append(p.GapPercent).Append(p.SizePercent).Append(p.MarginPercent);
-        sb.Append((int)p.Style).Append(p.Order);
-        sb.Append(p.TextBgColor).Append(p.TextBgOpacity).Append(p.TextColor).Append(p.TextCornerRadius);
-        sb.Append(string.Join(",", p.EnabledBadges));
-        sb.Append((int)p.LanguageFilter).Append(string.Join(",", p.LanguageCodes)).Append(p.HideUndefinedLanguage);
-        sb.Append(p.SubtitlesWithoutAudioOnly).Append((int)p.SubtitleLabel);
-        sb.Append(p.InlineWithPrevious);
-        if (p.BadgeTypeOverrides != null)
-        {
-            foreach (var o in p.BadgeTypeOverrides)
-            {
-                sb.Append(o.BadgeKey).Append(o.BgColor ?? "n").Append(o.BgOpacity).Append(o.TextColor ?? "n").Append(o.CornerRadius);
-            }
-        }
-        sb.Append('|');
     }
 
     private string GetCachePath(string cacheKey)

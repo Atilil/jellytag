@@ -67,27 +67,24 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
         _logger = logger;
     }
 
-    /// <summary>
-    /// Maps a BadgeCategory to the corresponding panel in ImageTypeConfig.
-    /// </summary>
-    private static BadgePanelSettings GetPanelForCategory(BadgeCategory category, ImageTypeConfig imageConfig)
+    internal static PanelType PanelTypeFor(BadgeCategory category) => category switch
     {
-        return category switch
-        {
-            BadgeCategory.Resolution => imageConfig.ResolutionPanel,
-            BadgeCategory.Hdr or BadgeCategory.ThreeD => imageConfig.HdrPanel,
-            BadgeCategory.VideoCodec => imageConfig.CodecPanel,
-            BadgeCategory.Audio => imageConfig.AudioPanel,
-            BadgeCategory.Language => imageConfig.LanguagePanel,
-            BadgeCategory.Subtitle => imageConfig.SubtitlePanel ?? imageConfig.LanguagePanel,
-            BadgeCategory.Runtime => imageConfig.RuntimePanel,
-            BadgeCategory.Rating => imageConfig.RatingPanel,
-            _ => imageConfig.ResolutionPanel
-        };
-    }
+        BadgeCategory.Resolution => PanelType.Resolution,
+        BadgeCategory.Hdr or BadgeCategory.ThreeD => PanelType.Hdr,
+        BadgeCategory.VideoCodec => PanelType.Codec,
+        BadgeCategory.Audio => PanelType.Audio,
+        BadgeCategory.Language => PanelType.Language,
+        BadgeCategory.Subtitle => PanelType.Subtitle,
+        BadgeCategory.Runtime => PanelType.Runtime,
+        BadgeCategory.Rating => PanelType.Rating,
+        _ => PanelType.Resolution
+    };
+
+    private static BadgePanel? FindPanel(ProfileImageConfig imageConfig, PanelType type) =>
+        imageConfig.Zones.SelectMany(z => z.Lines).SelectMany(l => l.Panels).FirstOrDefault(p => p.Type == type);
 
     /// <inheritdoc />
-    public bool ShouldShowBadge(BadgeInfo badge, ImageTypeConfig imageConfig)
+    public bool ShouldShowBadge(BadgeInfo badge, ProfileImageConfig imageConfig)
     {
         var config = Plugin.Instance?.Configuration;
         if (config == null || !config.Enabled)
@@ -95,8 +92,9 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
             return false;
         }
 
-        var panel = GetPanelForCategory(badge.Category, imageConfig);
-        if (!panel.Enabled)
+        // A panel is shown when it is placed in a zone.
+        var panel = FindPanel(imageConfig, PanelTypeFor(badge.Category));
+        if (panel == null)
         {
             return false;
         }
@@ -126,7 +124,7 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
     /// Applies a language or subtitle panel's filter: undefined ("und") tracks, then the
     /// "only these" / "all except these" list. Codes are compared normalized (fre = fra).
     /// </summary>
-    internal static bool IsLanguageShown(string languageKey, BadgePanelSettings panel)
+    internal static bool IsLanguageShown(string languageKey, BadgePanel panel)
     {
         var lang = QualityDetectionService.NormalizeLanguage(languageKey);
         if (lang == "und" && panel.HideUndefinedLanguage)
@@ -158,7 +156,7 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
     }
 
     /// <inheritdoc />
-    public async Task<(Stream Stream, string ContentType)> AddBadgeOverlaysAsync(Stream originalImage, List<BadgeInfo> badges, ImageTypeConfig imageConfig)
+    public async Task<(Stream Stream, string ContentType)> AddBadgeOverlaysAsync(Stream originalImage, List<BadgeInfo> badges, ProfileImageConfig imageConfig)
     {
         var config = Plugin.Instance?.Configuration ?? new PluginConfiguration();
         var jpegQuality = Math.Clamp(config.JpegQuality, 1, 100);
@@ -177,58 +175,30 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
             return (output, sourceContentType);
         }
 
-        // Get ordered panels
-        var panels = GetOrderedPanels(imageConfig);
-
-        // Group badges by panel, prepare and render each panel
         var allPanelGroups = new List<PanelRenderGroup>();
         var allOwnedBitmaps = new List<SKBitmap>();
 
         try
         {
-            foreach (var (panel, category) in panels)
+            foreach (var zone in imageConfig.Zones)
             {
-                if (!panel.Enabled) continue;
-
-                var panelBadges = badges.Where(b => GetPanelForCategory(b.Category, imageConfig) == panel).ToList();
-                if (panelBadges.Count == 0) continue;
-
-                // Subtitle labels depend on the panel: copies, the detected badges are shared.
-                panelBadges = panelBadges
-                    .Select(b => b.Category == BadgeCategory.Subtitle
-                        ? new BadgeInfo
-                        {
-                            Category = b.Category, BadgeKey = b.BadgeKey, ResourceFileName = string.Empty,
-                            DisplayText = FormatSubtitleLabel(QualityDetectionService.SubtitleLanguage(b.BadgeKey), panel.SubtitleLabel)
-                        }
-                        : b)
-                    .ToList();
-
-                panelBadges = ApplyShowMode(panel.ShowMode, panelBadges);
-
-                var sizePercent = Math.Clamp(panel.SizePercent, MinBadgeSizePercent, MaxBadgeSizePercent);
-                var useText = panel.Style == BadgeStyle.Text;
-
-                var sizes = new List<SKSizeI>();
-                var icons = new List<SKBitmap?>();
-                var sourceBitmaps = new List<SKBitmap>();
-                var filtered = new List<BadgeInfo>();
-                var ownedBitmaps = new List<SKBitmap>();
-
-                await PrepareBadgeGroup(panelBadges, sizePercent, image.Width, useText, sizes, icons, sourceBitmaps, filtered, ownedBitmaps).ConfigureAwait(false);
-                allOwnedBitmaps.AddRange(ownedBitmaps);
-
-                if (filtered.Count == 0) continue;
-
-                allPanelGroups.Add(new PanelRenderGroup
+                var zoneGroups = new List<PanelRenderGroup>();
+                for (var line = 0; line < zone.Lines.Count; line++)
                 {
-                    Panel = panel,
-                    Filtered = filtered,
-                    Sizes = sizes,
-                    Icons = icons,
-                    SourceBitmaps = sourceBitmaps,
-                    ImageConfig = imageConfig
-                });
+                    foreach (var panel in zone.Lines[line].Panels)
+                    {
+                        var group = await PreparePanel(panel, line, badges, image.Width, allOwnedBitmaps).ConfigureAwait(false);
+                        if (group != null) zoneGroups.Add(group);
+                    }
+                }
+
+                var layout = ZoneLayout.Layout(image.Width, image.Height, zone, zoneGroups.Select(g => (g.Line, g.Panel, g.Sizes)).ToList());
+                for (var i = 0; i < zoneGroups.Count; i++)
+                {
+                    zoneGroups[i].Positions = layout[i];
+                }
+
+                allPanelGroups.AddRange(zoneGroups);
             }
 
             if (allPanelGroups.Count == 0)
@@ -238,12 +208,6 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
                 await originalImage.CopyToAsync(output).ConfigureAwait(false);
                 output.Position = 0;
                 return (output, sourceContentType);
-            }
-
-            var layout = LayoutPanels(image.Width, image.Height, allPanelGroups.Select(g => (g.Panel, g.Sizes)).ToList());
-            for (var i = 0; i < allPanelGroups.Count; i++)
-            {
-                allPanelGroups[i].Positions = layout[i];
             }
 
             // Draw badges onto image
@@ -257,7 +221,7 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
             foreach (var group in allPanelGroups)
             {
                 var useText = group.Panel.Style == BadgeStyle.Text;
-                RenderBadgeGroup(canvas, group.Filtered, group.SourceBitmaps, group.Icons, group.Positions, group.Sizes, useText, group.Panel, group.ImageConfig, paint, sampling);
+                RenderBadgeGroup(canvas, group.Filtered, group.SourceBitmaps, group.Icons, group.Positions, group.Sizes, useText, group.Panel, paint, sampling);
             }
 
             canvas.Flush();
@@ -282,13 +246,13 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
 
     private sealed class PanelRenderGroup
     {
-        public BadgePanelSettings Panel { get; set; } = null!;
+        public int Line { get; set; }
+        public BadgePanel Panel { get; set; } = null!;
         public List<BadgeInfo> Filtered { get; set; } = new();
         public List<SKSizeI> Sizes { get; set; } = new();
         public List<SKBitmap?> Icons { get; set; } = new();
         public List<SKBitmap> SourceBitmaps { get; set; } = new();
         public List<SKPointI> Positions { get; set; } = new();
-        public ImageTypeConfig ImageConfig { get; set; } = null!;
     }
 
     /// <summary>
@@ -297,87 +261,35 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
     internal static List<BadgeInfo> ApplyShowMode(BadgeDisplayMode mode, List<BadgeInfo> badges) =>
         mode == BadgeDisplayMode.Highest && badges.Count > 1 ? new List<BadgeInfo> { badges[0] } : badges;
 
-    private static List<(BadgePanelSettings Panel, string Name)> GetOrderedPanels(ImageTypeConfig imageConfig)
-    {
-        var panels = new List<(BadgePanelSettings Panel, string Name)>
-        {
-            (imageConfig.ResolutionPanel, "Resolution"),
-            (imageConfig.HdrPanel, "HDR"),
-            (imageConfig.CodecPanel, "Codec"),
-            (imageConfig.AudioPanel, "Audio"),
-            (imageConfig.LanguagePanel, "Language"),
-            (imageConfig.RuntimePanel, "Runtime"),
-            (imageConfig.RatingPanel, "Rating")
-        };
-        if (imageConfig.SubtitlePanel != null)
-        {
-            // Right after the language panel: migrated configurations give both the same order.
-            panels.Insert(5, (imageConfig.SubtitlePanel, "Subtitle"));
-        }
-
-        // OrderBy is stable, unlike List.Sort: panels with the same order keep the list order.
-        return panels.OrderBy(p => p.Panel.Order).ToList();
-    }
-
     /// <summary>
-    /// Positions of each group's badges, in the group's order. Panels at the same position stack
-    /// in panel order; a panel marked InlineWithPrevious continues the row of the previous panel
-    /// at its position when that row is horizontal.
+    /// Measures the badges of one panel. Returns null when the panel has nothing to draw.
     /// </summary>
-    internal static List<List<SKPointI>> LayoutPanels(
-        int imageWidth, int imageHeight, IReadOnlyList<(BadgePanelSettings Panel, List<SKSizeI> Sizes)> groups)
+    private async Task<PanelRenderGroup?> PreparePanel(
+        BadgePanel panel, int line, List<BadgeInfo> badges, int imageWidth, List<SKBitmap> ownedBitmaps)
     {
-        // Each line holds group indices; the first group's settings place the whole line.
-        var lines = new List<List<int>>();
-        var lastLine = new Dictionary<BadgePosition, List<int>>();
-        for (var g = 0; g < groups.Count; g++)
-        {
-            var panel = groups[g].Panel;
-            if (JoinsLine(panel, lastLine.GetValueOrDefault(panel.Position), groups))
-            {
-                lastLine[panel.Position].Add(g);
-                continue;
-            }
+        var panelBadges = badges.Where(b => PanelTypeFor(b.Category) == panel.Type).ToList();
+        if (panelBadges.Count == 0) return null;
 
-            var line = new List<int> { g };
-            lines.Add(line);
-            lastLine[panel.Position] = line;
-        }
+        // Subtitle labels depend on the panel: copies, the detected badges are shared.
+        panelBadges = panelBadges
+            .Select(b => b.Category == BadgeCategory.Subtitle
+                ? new BadgeInfo
+                {
+                    Category = b.Category, BadgeKey = b.BadgeKey, ResourceFileName = string.Empty,
+                    DisplayText = FormatSubtitleLabel(QualityDetectionService.SubtitleLanguage(b.BadgeKey), panel.SubtitleLabel)
+                }
+                : b)
+            .ToList();
 
-        var result = groups.Select(_ => new List<SKPointI>()).ToList();
-        var priorExtents = Enum.GetValues<BadgePosition>().ToDictionary(p => p, _ => 0);
-        foreach (var line in lines)
-        {
-            var first = groups[line[0]].Panel;
-            var marginPercent = Math.Clamp(first.MarginPercent, MinBadgeMarginPercent, MaxBadgeMarginPercent);
-            var margin = (int)(imageWidth * marginPercent / 100f);
+        panelBadges = ApplyShowMode(panel.ShowMode, panelBadges);
 
-            // (group, badge) slots in reading order, reversed where the first badge sits at the far edge.
-            var slots = line.SelectMany(g => groups[g].Sizes.Select((_, b) => (Group: g, Badge: b))).ToList();
-            if (ShouldReverseOrder(first.Layout, first.Position)) slots.Reverse();
-            var sizes = slots.Select(s => groups[s.Group].Sizes[s.Badge]).ToList();
-            var gap = sizes.Count > 0 ? (int)(sizes.Average(s => s.Height) * Math.Max(0f, first.GapPercent) / 100f) : 0;
+        var sizePercent = Math.Clamp(panel.SizePercent, MinBadgeSizePercent, MaxBadgeSizePercent);
+        var group = new PanelRenderGroup { Line = line, Panel = panel };
+        await PrepareBadgeGroup(
+            panelBadges, sizePercent, imageWidth, panel.Style == BadgeStyle.Text,
+            group.Sizes, group.Icons, group.SourceBitmaps, group.Filtered, ownedBitmaps).ConfigureAwait(false);
 
-            var points = CalculateStackedPositions(imageWidth, imageHeight, sizes, first.Position, margin, gap, first.Layout, priorExtents[first.Position]);
-            var byGroup = line.ToDictionary(g => g, g => new SKPointI[groups[g].Sizes.Count]);
-            for (var i = 0; i < slots.Count; i++) byGroup[slots[i].Group][slots[i].Badge] = points[i];
-            foreach (var g in line) result[g] = byGroup[g].ToList();
-
-            priorExtents[first.Position] += GroupVerticalExtent(sizes, gap, first.Layout);
-        }
-
-        return result;
-    }
-
-    private static bool JoinsLine(BadgePanelSettings panel, List<int>? line, IReadOnlyList<(BadgePanelSettings Panel, List<SKSizeI> Sizes)> groups) =>
-        panel.InlineWithPrevious && line != null && groups[line[0]].Panel.Layout == BadgeLayout.Horizontal;
-
-    private static int GroupVerticalExtent(List<SKSizeI> sizes, int gap, BadgeLayout layout)
-    {
-        if (sizes.Count == 0) return 0;
-        return layout == BadgeLayout.Horizontal
-            ? sizes.Max(s => s.Height) + gap
-            : sizes.Sum(s => s.Height) + (sizes.Count - 1) * gap + gap;
+        return group.Filtered.Count == 0 ? null : group;
     }
 
     /// <inheritdoc />
@@ -788,62 +700,6 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
         return Path.Combine(dataFolder, "custom-badges");
     }
 
-    private static bool ShouldReverseOrder(BadgeLayout layout, BadgePosition position) =>
-        (layout == BadgeLayout.Vertical && position is BadgePosition.BottomLeft or BadgePosition.BottomRight or BadgePosition.BottomCenter)
-        || (layout == BadgeLayout.Horizontal && (position == BadgePosition.TopRight || position == BadgePosition.BottomRight));
-
-    internal static List<SKPointI> CalculateStackedPositions(
-        int imageWidth, int imageHeight,
-        List<SKSizeI> badges,
-        BadgePosition position, int margin, int gap,
-        BadgeLayout layout, int priorExtent = 0)
-    {
-        var positions = new List<SKPointI>();
-        if (badges.Count == 0) return positions;
-
-        var bottom = position is BadgePosition.BottomLeft or BadgePosition.BottomRight or BadgePosition.BottomCenter;
-
-        // X of a block of the given width: margin from its edge, or centered (no margin).
-        int BlockX(int blockWidth) => position switch
-        {
-            BadgePosition.TopRight or BadgePosition.BottomRight => Math.Max(0, imageWidth - blockWidth - margin),
-            BadgePosition.TopCenter or BadgePosition.BottomCenter => Math.Max(0, (imageWidth - blockWidth) / 2),
-            _ => margin
-        };
-
-        int StartY(int blockHeight) => bottom
-            ? Math.Max(0, imageHeight - blockHeight - margin - priorExtent)
-            : margin + priorExtent;
-
-        if (layout == BadgeLayout.Horizontal)
-        {
-            var totalWidth = badges.Sum(b => b.Width) + (badges.Count - 1) * gap;
-            var maxHeight = badges.Max(b => b.Height);
-            var startY = StartY(maxHeight);
-
-            var currentX = BlockX(totalWidth);
-            foreach (var badge in badges)
-            {
-                var yOffset = (maxHeight - badge.Height) / 2;
-                positions.Add(new SKPointI(currentX, startY + yOffset));
-                currentX += badge.Width + gap;
-            }
-        }
-        else
-        {
-            var totalHeight = badges.Sum(b => b.Height) + (badges.Count - 1) * gap;
-            var currentY = StartY(totalHeight);
-            foreach (var badge in badges)
-            {
-                // Each badge of a column is aligned on its own width.
-                positions.Add(new SKPointI(BlockX(badge.Width), currentY));
-                currentY += badge.Height + gap;
-            }
-        }
-
-        return positions;
-    }
-
     private static string GetBadgeDisplayText(BadgeInfo badge)
     {
         return !string.IsNullOrEmpty(badge.DisplayText) ? badge.DisplayText : GetBadgeDisplayText(badge.BadgeKey);
@@ -885,7 +741,7 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
     /// <summary>
     /// Resolves colors for a badge, checking per-badge-type overrides in the panel first.
     /// </summary>
-    private static (string bg, string text, byte opacity, int cornerRadius) ResolveBadgeStyle(BadgeInfo badge, BadgePanelSettings panel, ImageTypeConfig imageConfig)
+    private static (string bg, string text, byte opacity, int cornerRadius) ResolveBadgeStyle(BadgeInfo badge, BadgePanel panel)
     {
         var bgColor = panel.TextBgColor ?? "#000000";
         var textColor = panel.TextColor ?? "#FFFFFF";
@@ -905,11 +761,11 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
         return (bgColor, textColor, opacity, cornerRadius);
     }
 
-    private static void RenderTextBadges(SKCanvas canvas, List<BadgeInfo> badges, List<SKPointI> positions, List<SKSizeI> sizes, BadgePanelSettings panel, ImageTypeConfig imageConfig, List<SKBitmap?>? icons = null)
+    private static void RenderTextBadges(SKCanvas canvas, List<BadgeInfo> badges, List<SKPointI> positions, List<SKSizeI> sizes, BadgePanel panel, List<SKBitmap?>? icons = null)
     {
         for (int i = 0; i < badges.Count; i++)
         {
-            var (bgHex, textHex, bgAlpha, cornerRadiusPct) = ResolveBadgeStyle(badges[i], panel, imageConfig);
+            var (bgHex, textHex, bgAlpha, cornerRadiusPct) = ResolveBadgeStyle(badges[i], panel);
             var bgColor = ParseHexColor(bgHex, bgAlpha);
             var textColor = SKColor.TryParse(textHex, out var tc) ? tc : SKColors.White;
 
@@ -968,13 +824,13 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
     private static void RenderBadgeGroup(
         SKCanvas canvas, List<BadgeInfo> filtered, List<SKBitmap> sourceBitmaps, List<SKBitmap?> icons,
         List<SKPointI> positions, List<SKSizeI> sizes, bool useText,
-        BadgePanelSettings panel, ImageTypeConfig imageConfig, SKPaint paint, SKSamplingOptions sampling)
+        BadgePanel panel, SKPaint paint, SKSamplingOptions sampling)
     {
         if (filtered.Count == 0) return;
 
         if (useText)
         {
-            RenderTextBadges(canvas, filtered, positions, sizes, panel, imageConfig, icons);
+            RenderTextBadges(canvas, filtered, positions, sizes, panel, icons);
         }
         else
         {
@@ -1002,7 +858,7 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
 
             if (textBadges.Count > 0)
             {
-                RenderTextBadges(canvas, textBadges, textPositions, textSizes, panel, imageConfig);
+                RenderTextBadges(canvas, textBadges, textPositions, textSizes, panel);
             }
         }
     }

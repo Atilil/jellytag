@@ -6,7 +6,7 @@ namespace Jellyfin.Plugin.JellyTag.Tests.Services;
 
 public class LanguageFilterTests
 {
-    private static BadgePanelSettings Panel(LanguageFilterMode mode, params string[] codes) =>
+    private static BadgePanel Panel(LanguageFilterMode mode, params string[] codes) =>
         new() { LanguageFilter = mode, LanguageCodes = codes.ToList() };
 
     // #6: hide the language most of the library is in.
@@ -34,7 +34,7 @@ public class LanguageFilterTests
     public void Undefined_HiddenByDefault()
     {
         Assert.False(ImageOverlayService.IsLanguageShown("und", Panel(LanguageFilterMode.All)));
-        Assert.True(ImageOverlayService.IsLanguageShown("und", new BadgePanelSettings { HideUndefinedLanguage = false }));
+        Assert.True(ImageOverlayService.IsLanguageShown("und", new BadgePanel { HideUndefinedLanguage = false }));
     }
 
     [Theory]

@@ -5,6 +5,7 @@ using static Jellyfin.Plugin.JellyTag.Configuration.OutputImageFormat;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.Movies;
 using MediaBrowser.Controller.Entities.TV;
+using MediaBrowser.Model.Entities;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
@@ -71,25 +72,25 @@ public partial class ImageOverlayMiddleware
             return;
         }
 
-        if (item is not (Movie or Series or Season or Episode or Video)
-            || (item is Episode && !config.ShowOnEpisodes))
+        if (item is not (Movie or Series or Season or Episode or Video))
         {
             await _next(context).ConfigureAwait(false);
             return;
         }
 
-        // Items outside every library (intros added by plugins such as Local Intros) are not
-        // media to badge; so are items of an excluded library.
-        var collectionFolders = libraryManager.GetCollectionFolders(item);
-        if (collectionFolders.Count == 0
-            || collectionFolders.Any(f => config.ExcludedLibraryIds.Contains(f.Id.ToString("N"))))
+        // Items outside every library (intros added by plugins such as Local Intros) get no profile.
+        var libraryIds = libraryManager.GetCollectionFolders(item).Select(f => f.Id.ToString("N")).ToList();
+        var profile = BadgeSettingsResolver.ResolveProfile(config, libraryIds);
+        if (profile == null || (item is Episode && !profile.ShowOnEpisodes))
         {
             await _next(context).ConfigureAwait(false);
             return;
         }
 
-        var imageConfig = GetImageTypeConfig(config, imageType, item);
-        if (imageConfig == null || !imageConfig.Enabled)
+        var requestedType = Enum.Parse<ImageType>(imageType, ignoreCase: true);
+        var imageConfig = BadgeSettingsResolver.ResolveImage(
+            profile, BadgeSettingsResolver.TargetImageType(requestedType, item is Episode));
+        if (imageConfig == null)
         {
             await _next(context).ConfigureAwait(false);
             return;
@@ -115,7 +116,7 @@ public partial class ImageOverlayMiddleware
 
         var query = context.Request.QueryString.Value ?? string.Empty;
         var tag = context.Request.Query["tag"].FirstOrDefault() ?? item.DateModified.Ticks.ToString();
-        var imageTag = $"{tag}_{imageType}_{query}";
+        var imageTag = $"{tag}_{imageType}_{query}_{BadgeSettingsResolver.Fingerprint(imageConfig)}";
 
         var cachedImage = await cacheService.GetCachedImageAsync(itemId, badgeKey, imageTag).ConfigureAwait(false);
         if (cachedImage != null)
@@ -176,82 +177,5 @@ public partial class ImageOverlayMiddleware
         {
             context.Response.Body = originalBody;
         }
-    }
-
-    private static ImageTypeConfig? GetImageTypeConfig(PluginConfiguration config, string imageType, BaseItem item)
-    {
-        var type = imageType.ToUpperInvariant();
-
-        var isThumb = type switch
-        {
-            "PRIMARY" when item is Episode => true,
-            "THUMB" => true,
-            _ => false
-        };
-
-        if (isThumb && config.ThumbnailSameAsPoster)
-        {
-            return ApplySizeReduction(config.PosterConfig, config.ThumbnailSizeReduction);
-        }
-
-        return type switch
-        {
-            "PRIMARY" when item is Episode => config.ThumbnailConfig,
-            "PRIMARY" => config.PosterConfig,
-            "THUMB" => config.ThumbnailConfig,
-            _ => null
-        };
-    }
-
-    private static ImageTypeConfig ApplySizeReduction(ImageTypeConfig source, int reduction)
-    {
-        if (reduction <= 0) return source;
-
-        var clone = new ImageTypeConfig
-        {
-            Enabled = source.Enabled,
-            ResolutionPanel = ClonePanelWithReduction(source.ResolutionPanel, reduction),
-            HdrPanel = ClonePanelWithReduction(source.HdrPanel, reduction),
-            CodecPanel = ClonePanelWithReduction(source.CodecPanel, reduction),
-            AudioPanel = ClonePanelWithReduction(source.AudioPanel, reduction),
-            LanguagePanel = ClonePanelWithReduction(source.LanguagePanel, reduction),
-            RuntimePanel = ClonePanelWithReduction(source.RuntimePanel, reduction),
-            RatingPanel = ClonePanelWithReduction(source.RatingPanel, reduction),
-            SubtitlePanel = source.SubtitlePanel == null ? null : ClonePanelWithReduction(source.SubtitlePanel, reduction),
-            ShowVostIndicator = source.ShowVostIndicator,
-            VostBgColor = source.VostBgColor,
-            VostTextColor = source.VostTextColor,
-            VostBgOpacity = source.VostBgOpacity,
-            VostCornerRadius = source.VostCornerRadius
-        };
-        return clone;
-    }
-
-    private static BadgePanelSettings ClonePanelWithReduction(BadgePanelSettings panel, int reduction)
-    {
-        return new BadgePanelSettings
-        {
-            Enabled = panel.Enabled,
-            Position = panel.Position,
-            ShowMode = panel.ShowMode,
-            Layout = panel.Layout,
-            GapPercent = panel.GapPercent,
-            SizePercent = Math.Max(1, panel.SizePercent - reduction),
-            MarginPercent = panel.MarginPercent,
-            Style = panel.Style,
-            Order = panel.Order,
-            TextBgColor = panel.TextBgColor,
-            TextBgOpacity = panel.TextBgOpacity,
-            TextColor = panel.TextColor,
-            TextCornerRadius = panel.TextCornerRadius,
-            BadgeTypeOverrides = new List<BadgeTypeStyleOverride>(panel.BadgeTypeOverrides),
-            EnabledBadges = new List<string>(panel.EnabledBadges),
-            LanguageFilter = panel.LanguageFilter,
-            LanguageCodes = new List<string>(panel.LanguageCodes),
-            HideUndefinedLanguage = panel.HideUndefinedLanguage,
-            SubtitlesWithoutAudioOnly = panel.SubtitlesWithoutAudioOnly,
-            SubtitleLabel = panel.SubtitleLabel,
-            InlineWithPrevious = panel.InlineWithPrevious
-        };
     }
 }

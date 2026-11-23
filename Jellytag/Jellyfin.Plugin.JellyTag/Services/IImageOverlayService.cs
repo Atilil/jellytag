@@ -11,12 +11,12 @@ public interface IImageOverlayService
     /// Adds multiple badge overlays to an image using per-panel configuration.
     /// Returns the result stream and the content type.
     /// </summary>
-    Task<(Stream Stream, string ContentType)> AddBadgeOverlaysAsync(Stream originalImage, List<BadgeInfo> badges, ImageTypeConfig imageConfig);
+    Task<(Stream Stream, string ContentType)> AddBadgeOverlaysAsync(Stream originalImage, List<BadgeInfo> badges, ProfileImageConfig imageConfig);
 
     /// <summary>
-    /// Determines if a badge should be shown based on the image type config panels.
+    /// Determines if a badge should be shown based on the panels placed in the image type.
     /// </summary>
-    bool ShouldShowBadge(BadgeInfo badge, ImageTypeConfig imageConfig);
+    bool ShouldShowBadge(BadgeInfo badge, ProfileImageConfig imageConfig);
 
     /// <summary>
     /// Reloads all badge images from resources and custom badges directory.
