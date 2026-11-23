@@ -68,6 +68,26 @@
                 .jellytag-config-layout { margin-right: 0; }
                 .jellytag-preview-panel { position: static; width: 100%; max-width: 100%; max-height: none; margin-bottom: 1em; }
             }
+            .jellytag-config-layout { margin-right: 0; }
+            .jellytag-tabs { display: flex; flex-wrap: wrap; gap: .3em; border-bottom: 1px solid rgba(255,255,255,.15); margin-bottom: 1em; }
+            .jellytag-tabs button { background: none; border: none; border-bottom: 2px solid transparent; color: inherit; padding: .6em 1em; cursor: pointer; font-size: 1em; }
+            .jellytag-tabs button.active { border-bottom-color: #00a4dc; color: #00a4dc; }
+            .jellytag-toolbar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: .6em; }
+            .jellytag-toolbar .inputContainer { flex: 1 1 14em; margin-bottom: 0; }
+            .jellytag-libs { width: 100%; border-collapse: collapse; }
+            .jellytag-libs td { padding: .3em .5em; vertical-align: middle; border-bottom: 1px solid rgba(255,255,255,.06); }
+            .jellytag-libs td.lib-name { width: 40%; }
+            .jellytag-libs select { width: 100%; }
+            .jellytag-arrows { display: inline-flex; gap: .25em; }
+            .jellytag-arrows button { background: rgba(255,255,255,.15); border: none; color: #fff; width: 26px; height: 26px; border-radius: .2em; cursor: pointer; font-size: .85em; padding: 0; }
+            .jellytag-arrows button:hover { background: rgba(0,164,220,.6); }
+            .jellytag-arrows button:disabled { opacity: .3; cursor: default; }
+            .jellytag-zone-summary { margin: .3em 0; }
+            .jellytag-zone-summary b { display: inline-block; min-width: 9em; }
+            .jellytag-savebar { position: sticky; bottom: 0; z-index: 40; display: flex; align-items: center; gap: 1em; margin-top: 1em; padding: .6em 1em; background: rgba(20,20,20,.97); border-top: 1px solid rgba(255,255,255,.12); }
+            .jellytag-savebar #DirtyState { flex: 1; color: #aaa; }
+            .jellytag-savebar.dirty #DirtyState { color: #ffb74d; }
+            .jellytag-savebar button { margin: 0; }
         </style>
         <div data-role="content">
             <div class="content-primary">
@@ -80,119 +100,74 @@
                         <h3 class="sectionTitle">General</h3>
                         <div class="checkboxContainer checkboxContainer-withDescription">
                             <label class="emby-checkbox-label">
-                                <input id="Enabled" type="checkbox" is="emby-checkbox" />
+                                <input id="Enabled" type="checkbox" is="emby-checkbox" data-global="Enabled" />
                                 <span>Enable JellyTag</span>
                             </label>
                         </div>
                     </div>
 
-                    <!-- Libraries -->
+                    <details class="jellytag-section" open>
+                        <summary>Profiles</summary>
+                        <div class="jellytag-section-body" id="ProfileSection"><em>Loading...</em></div>
+                    </details>
+
                     <details class="jellytag-section">
                         <summary>Libraries</summary>
                         <div class="jellytag-section-body">
-                            <div id="LibraryCheckboxes"><em>Loading libraries...</em></div>
+                            <div class="fieldDescription">An item in several libraries uses the first of them in this list.</div>
+                            <div id="LibraryTable"><em>Loading libraries...</em></div>
                         </div>
                     </details>
 
-                    <!-- Posters -->
                     <details class="jellytag-section" open>
-                        <summary>Posters</summary>
+                        <summary id="ImagesTitle">Images</summary>
                         <div class="jellytag-section-body">
-                            <div class="checkboxContainer checkboxContainer-withDescription">
-                                <label class="emby-checkbox-label">
-                                    <input id="PosterEnabled" type="checkbox" is="emby-checkbox" />
-                                    <span>Enable</span>
-                                </label>
-                            </div>
-                            <div id="PosterPanels"></div>
+                            <div id="ImageTabs" class="jellytag-tabs"></div>
+                            <div id="ImageTab"></div>
                         </div>
                     </details>
 
-                    <!-- Thumbnails -->
-                    <details class="jellytag-section">
-                        <summary>Thumbnails</summary>
-                        <div class="jellytag-section-body">
-                            <div class="checkboxContainer checkboxContainer-withDescription">
-                                <label class="emby-checkbox-label">
-                                    <input id="ThumbnailSameAsPoster" type="checkbox" is="emby-checkbox" />
-                                    <span>Same as Poster</span>
-                                </label>
-                            </div>
-                            <div class="checkboxContainer checkboxContainer-withDescription">
-                                <label class="emby-checkbox-label">
-                                    <input id="ShowOnEpisodes" type="checkbox" is="emby-checkbox" />
-                                    <span>Badges on episodes</span>
-                                </label>
-                                <div class="fieldDescription">Episode images are landscape: they use the thumbnail settings.</div>
-                            </div>
-                            <div id="ThumbSizeReductionWrap" class="inputContainer hidden">
-                                <label class="inputLabel inputLabelUnfocused" for="ThumbnailSizeReduction">Size reduction</label>
-                                <input id="ThumbnailSizeReduction" type="number" min="0" max="50" step="1" is="emby-input" />
-                                <div class="fieldDescription">Thumbnail badge size = poster badge size − this value.</div>
-                            </div>
-                            <div id="ThumbFieldsContainer">
-                                <div class="checkboxContainer checkboxContainer-withDescription">
-                                    <label class="emby-checkbox-label">
-                                        <input id="ThumbEnabled" type="checkbox" is="emby-checkbox" />
-                                        <span>Enable badges on thumbnails</span>
-                                    </label>
-                                </div>
-                                <div id="ThumbPanels"></div>
-                            </div>
-                        </div>
-                    </details>
-
-                    <!-- Performance -->
                     <details class="jellytag-section">
                         <summary>Performance</summary>
                         <div class="jellytag-section-body">
                             <div class="inputContainer">
                                 <label class="inputLabel inputLabelUnfocused" for="CacheDurationHours">Cache Duration (hours)</label>
-                                <input id="CacheDurationHours" type="number" min="1" max="720" step="1" is="emby-input" />
+                                <input id="CacheDurationHours" type="number" min="1" max="720" step="1" is="emby-input" data-global="CacheDurationHours" />
                             </div>
                             <div class="inputContainer">
                                 <label class="inputLabel inputLabelUnfocused" for="OutputFormat">Output Format</label>
-                                <select id="OutputFormat" is="emby-select">
+                                <select id="OutputFormat" is="emby-select" data-global="OutputFormat">
                                     <option value="Jpeg">JPEG</option>
                                     <option value="WebP">WebP (experimental)</option>
                                 </select>
                             </div>
                             <div id="JpegQualityContainer" class="inputContainer">
                                 <label class="inputLabel inputLabelUnfocused" for="JpegQuality">JPEG Quality</label>
-                                <input id="JpegQuality" type="number" min="1" max="100" step="1" is="emby-input" />
+                                <input id="JpegQuality" type="number" min="1" max="100" step="1" is="emby-input" data-global="JpegQuality" />
                             </div>
                             <div id="WebPQualityContainer" class="inputContainer" style="display:none;">
                                 <label class="inputLabel inputLabelUnfocused" for="WebPQuality">WebP Quality</label>
-                                <input id="WebPQuality" type="number" min="1" max="100" step="1" is="emby-input" />
+                                <input id="WebPQuality" type="number" min="1" max="100" step="1" is="emby-input" data-global="WebPQuality" />
                             </div>
                             <div id="CacheStatsInfo" class="fieldDescription" style="margin-top:.5em;"></div>
                         </div>
                     </details>
 
                     <div class="verticalSection" style="margin-top:1em;">
-                        <div id="SaveError" class="jellytag-field-error hidden" style="margin-bottom:.5em;"></div>
-                        <button is="emby-button" type="submit" class="raised button-submit block" style="width:100%;"><span>Save</span></button>
-                        <button id="ClearCache" type="button" is="emby-button" class="raised button-warning block" style="width:100%; margin-top:.5em;"><span>Clear Image Cache</span></button>
+                        <button id="ClearCache" type="button" is="emby-button" class="raised button-warning block" style="width:100%;"><span>Clear Image Cache</span></button>
                         <button id="ExportConfig" type="button" is="emby-button" class="raised block" style="width:100%; margin-top:.5em;"><span>Export Config</span></button>
                         <button id="ImportConfigBtn" type="button" is="emby-button" class="raised block" style="width:100%; margin-top:.5em;"><span>Import Config</span></button>
                         <input id="ImportConfigFile" type="file" accept="application/json,.json" style="display:none;" />
                         <input id="CustomBadgeFile" type="file" accept="image/svg+xml,image/png,image/jpeg" style="display:none;" />
                         <button id="ResetAllSettings" type="button" is="emby-button" class="raised block" style="background:#888; width:100%; margin-top:.5em;"><span>Reset All Settings to Default</span></button>
                     </div>
-                </form>
-                <div class="jellytag-preview-panel">
-                    <h3>Live Preview</h3>
-                    <div class="preview-search-wrap">
-                        <input id="PreviewSearch" type="text" is="emby-input" placeholder="Search for a movie..." />
-                        <div id="PreviewSearchResults" class="preview-search-results"></div>
+
+                    <div id="SaveError" class="jellytag-field-error hidden" style="margin-top:1em;"></div>
+                    <div id="SaveBar" class="jellytag-savebar">
+                        <span id="DirtyState"></span>
+                        <button is="emby-button" type="submit" class="raised button-submit"><span>Save</span></button>
                     </div>
-                    <div id="PreviewSelected" class="preview-selected"></div>
-                    <div id="PreviewSpinner" class="preview-spinner">Refreshing preview...</div>
-                    <img id="PreviewPoster" class="preview-img poster" style="display:none;" />
-                    <img id="PreviewThumb" class="preview-img thumb" style="display:none;" />
-                    <div id="PreviewError" class="preview-error"></div>
-                    <button id="RefreshPreview" type="button" is="emby-button" class="raised block" style="width:100%; margin-top:.5em;"><span>Refresh Preview</span></button>
-                </div>
+                </form>
                 </div>
             </div>
         </div>
@@ -273,419 +248,8 @@
             return { images: [b.key], texts: [b.key] };
         }
 
-        // ===== HTML Generation =====
-        function sel(id, label, options) {
-            var h = '<div class="inputContainer"><label class="inputLabel inputLabelUnfocused" for="' + id + '">' + label + '</label>';
-            h += '<select id="' + id + '" is="emby-select">';
-            options.forEach(function(o) { h += '<option value="' + o.v + '">' + o.l + '</option>'; });
-            h += '</select></div>';
-            return h;
-        }
-        function num(id, label, min, max, step) {
-            return '<div class="inputContainer"><label class="inputLabel inputLabelUnfocused" for="' + id + '">' + label + '</label>' +
-                '<input id="' + id + '" type="number" min="' + min + '" max="' + max + '" step="' + step + '" is="emby-input" /></div>';
-        }
-        // Unlike `parseFloat(v) || fallback`, keeps a typed 0.
-        function numOr(id, fallback) {
-            var v = parseFloat(q(id).value);
-            return isNaN(v) ? fallback : v;
-        }
-        function chk(id, label, desc) {
-            var h = '<div class="checkboxContainer checkboxContainer-withDescription"><label class="emby-checkbox-label">';
-            h += '<input id="' + id + '" type="checkbox" is="emby-checkbox" /><span>' + label + '</span></label>';
-            if (desc) h += '<div class="fieldDescription">' + desc + '</div>';
-            h += '</div>';
-            return h;
-        }
-        function colorAlpha(idColor, idOpacity, label) {
-            return '<div class="inputContainer"><label class="inputLabel inputLabelUnfocused">' + label + '</label>' +
-                '<div class="jellytag-rgba"><input id="' + idColor + '" type="color" value="#000000" />' +
-                '<input id="' + idOpacity + '" type="number" min="0" max="255" step="1" is="emby-input" placeholder="Opacity" /></div></div>';
-        }
-        function colorOnly(id, label) {
-            return '<div class="inputContainer"><label class="inputLabel inputLabelUnfocused">' + label + '</label>' +
-                '<input id="' + id + '" type="color" value="#FFFFFF" /></div>';
-        }
-
-        var POS_OPTS = [{v:'TopLeft',l:'Top Left'},{v:'TopCenter',l:'Top Center'},{v:'TopRight',l:'Top Right'},{v:'BottomLeft',l:'Bottom Left'},{v:'BottomCenter',l:'Bottom Center'},{v:'BottomRight',l:'Bottom Right'}];
-        var LAYOUT_OPTS = [{v:'Vertical',l:'Vertical'},{v:'Horizontal',l:'Horizontal'}];
-
-        function arrowBtns() {
-            return '<span class="panel-arrows">' +
-                '<button type="button" class="panel-move-up" title="Move up" onclick="movePanelUp(this)">&#9650;</button>' +
-                '<button type="button" class="panel-move-down" title="Move down" onclick="movePanelDown(this)">&#9660;</button>' +
-                '</span>';
-        }
-
-        function panelHTML(p, panelId) {
-            var def = PANEL_DEFS[panelId];
-            var k = p + panelId;
-            var h = '<details class="jellytag-sub" data-panel-id="' + panelId + '"><summary>' + def.title + arrowBtns() + '</summary><div class="jellytag-sub-body">';
-            h += chk(k + 'Enabled', 'Enable');
-            h += '<div id="' + k + 'Settings">';
-
-            // Badges
-            h += '<div class="jellytag-grid">';
-            if (!def.single) def.badges.forEach(function(b) { h += chk(k + b.id, b.label); });
-            h += '</div>';
-
-            if (def.textOnly) {
-                h += '<input type="hidden" id="' + k + 'Style" value="Text" />';
-            } else {
-                h += '<div class="jellytag-row">';
-                h += def.hasShowMode ? '<div id="' + k + 'ShowModeWrap">' + sel(k + 'ShowMode', 'Show', def.showModeOptions) + '</div>' : '<div></div>';
-                h += sel(k + 'Style', 'Badge Style', [{v:'Image',l:'Image'},{v:'Text',l:'Text'}]);
-                h += '</div>';
-            }
-            h += '<div class="jellytag-row">' + sel(k + 'Position', 'Position', POS_OPTS);
-            h += '<div id="' + k + 'LayoutWrap">' + sel(k + 'Layout', 'Layout', LAYOUT_OPTS) + '</div></div>';
-            h += chk(k + 'Inline', 'Join the previous panel\'s row (horizontal)');
-            h += '<div class="jellytag-row three"><div id="' + k + 'GapWrap">' + num(k + 'Gap', 'Gap (% badge height)', 0, 100, 1) + '</div>';
-            h += num(k + 'Size', 'Size (% image width)', 5, 100, 1) + num(k + 'Margin', 'Margin (% image width)', 0, 20, 0.5) + '</div>';
-
-            // Customization of the checked badges only
-            h += '<details class="jellytag-sub"><summary>Customize badges</summary><div class="jellytag-sub-body">';
-            h += '<div class="fieldDescription">Custom images and texts are shared by posters and thumbnails.</div>';
-            if (!def.single) h += '<div class="fieldDescription" id="' + k + 'CustomEmpty">Check a badge above to customize it.</div>';
-            // Image style: the badge images
-            h += '<div id="' + k + 'CustomImages">';
-            h += '<div class="fieldDescription">Click a badge to replace its image (SVG, PNG or JPEG), &times; restores the default.</div>';
-            h += '<div class="jellytag-custom-images">';
-            def.badges.forEach(function(b) {
-                var ck = customKeysOf(b);
-                if (ck.images.length) h += '<div class="badge-cards" data-check="' + k + b.id + '" data-keys="' + ck.images.join(',') + '"></div>';
-            });
-            h += '</div></div>';
-            // Text style: the badge texts
-            h += '<div id="' + k + 'CustomTexts" class="jellytag-row three">';
-            def.badges.forEach(function(b) {
-                customKeysOf(b).texts.forEach(function(t) {
-                    h += '<div class="inputContainer" data-check="' + k + b.id + '"><label class="inputLabel inputLabelUnfocused">' + KEY_LABELS[t] + '</label>' +
-                        '<input type="text" is="emby-input" class="cbt-input" data-badge-key="' + t + '" placeholder="' + DEFAULT_TEXTS[t] + '" /></div>';
-                });
-            });
-            h += '</div>';
-
-            // Text style colors
-            h += '<div id="' + k + 'TextSettings" class="jellytag-text-box hidden">';
-            h += '<div class="inputContainer"><label class="inputLabel inputLabelUnfocused" for="' + k + 'BadgeSel">Colors for</label>';
-            h += '<select id="' + k + 'BadgeSel" is="emby-select"><option value="__global__">Global (all)</option>';
-            def.badges.forEach(function(b) { h += '<option value="' + b.key + '">' + b.label + '</option>'; });
-            h += '</select></div>';
-            h += colorAlpha(k + 'BgColor', k + 'BgOpacity', 'Background Color');
-            h += colorOnly(k + 'TextColor', 'Text Color');
-            h += num(k + 'CornerRadius', 'Corner Radius (0-50)', 0, 50, 1);
-            h += '<button id="' + k + 'ResetText" type="button" is="emby-button" class="raised"><span>Reset to global</span></button>';
-            h += '</div>'; // TextSettings
-            h += '</div></details>';
-
-            h += '</div>'; // Settings
-            h += '</div></details>';
-            return h;
-        }
-
-        // Language filter of the language and subtitle panels (#6, #7).
-        function langFilterHTML(k) {
-            var h = '<div class="jellytag-row">';
-            h += sel(k + 'LangFilter', 'Languages', [{v:'All',l:'All languages'},{v:'Only',l:'Only these'},{v:'Except',l:'All except these'}]);
-            h += '<div id="' + k + 'LangCodesWrap">' + sel(k + 'LangAdd', 'Add a language', [{v:'',l:'Add a language\u2026'}]) + '</div>';
-            h += '</div>';
-            h += '<div id="' + k + 'LangChips" class="lang-chips"></div>';
-            h += chk(k + 'HideUnd', 'Hide undefined languages (und)');
-            return h;
-        }
-
-        function subPanelHTML(p) {
-            var k = p + 'Sub';
-            var h = '<details class="jellytag-sub" data-panel-id="Sub"><summary>Subtitle Badges' + arrowBtns() + '</summary><div class="jellytag-sub-body">';
-            h += chk(k + 'Enabled', 'Enable');
-            h += '<div id="' + k + 'Settings">';
-            h += '<div class="jellytag-row">';
-            h += sel(k + 'Scope', 'Show', [{v:'WithoutAudio',l:'Languages without matching audio'},{v:'All',l:'All subtitle languages'}]);
-            h += sel(k + 'Label', 'Label', [{v:'Code',l:'Language code (EN)'},{v:'CcCode',l:'CC + code (CC EN)'},{v:'Vost',l:'VOST (VOSTEN)'}]);
-            h += '</div>';
-            h += langFilterHTML(k);
-            h += '<div class="jellytag-row">' + sel(k + 'Position', 'Position', POS_OPTS);
-            h += sel(k + 'Layout', 'Layout', LAYOUT_OPTS) + '</div>';
-            h += chk(k + 'Inline', 'Join the previous panel\'s row (horizontal)');
-            h += '<div class="jellytag-row three">' + num(k + 'Gap', 'Gap (% badge height)', 0, 100, 1);
-            h += num(k + 'Size', 'Size (% image width)', 5, 100, 1) + num(k + 'Margin', 'Margin (% image width)', 0, 20, 0.5) + '</div>';
-            h += '<div class="jellytag-text-box">';
-            h += colorAlpha(k + 'BgColor', k + 'BgOpacity', 'Background Color');
-            h += colorOnly(k + 'TextColor', 'Text Color');
-            h += num(k + 'CornerRadius', 'Corner Radius (0-50)', 0, 50, 1);
-            h += '</div>';
-            h += '</div>'; // Settings
-            h += '</div></details>';
-            return h;
-        }
-
-        function langPanelHTML(p) {
-            var k = p + 'Lang';
-            var h = '<details class="jellytag-sub" data-panel-id="Lang"><summary>Language Badges' + arrowBtns() + '</summary><div class="jellytag-sub-body">';
-            h += chk(k + 'Enabled', 'Enable');
-            h += '<div id="' + k + 'Settings">';
-            h += '<div class="jellytag-row">' + sel(k + 'ShowMode', 'Show', [{v:'All',l:'All'},{v:'Highest',l:'Default Only'}]);
-            h += sel(k + 'Style', 'Badge Style', [{v:'Image',l:'Image'},{v:'Text',l:'Text'}]) + '</div>';
-            h += '<div class="jellytag-row">' + sel(k + 'Position', 'Position', POS_OPTS);
-            h += '<div id="' + k + 'LayoutWrap">' + sel(k + 'Layout', 'Layout', LAYOUT_OPTS) + '</div></div>';
-            h += chk(k + 'Inline', 'Join the previous panel\'s row (horizontal)');
-            h += '<div class="jellytag-row three"><div id="' + k + 'GapWrap">' + num(k + 'Gap', 'Gap (% badge height)', 0, 100, 1) + '</div>';
-            h += num(k + 'Size', 'Size (% image width)', 5, 100, 1) + num(k + 'Margin', 'Margin (% image width)', 0, 20, 0.5) + '</div>';
-            h += langFilterHTML(k);
-            h += '<div id="' + k + 'TextSettings" class="jellytag-text-box hidden">';
-            h += colorAlpha(k + 'BgColor', k + 'BgOpacity', 'Background Color');
-            h += colorOnly(k + 'TextColor', 'Text Color');
-            h += num(k + 'CornerRadius', 'Corner Radius (0-50)', 0, 50, 1);
-            h += '</div>';
-            h += '<details class="jellytag-sub"><summary>Customize flags</summary><div class="jellytag-sub-body">';
-            h += '<div class="fieldDescription">Flags follow the audio language code: replace the English flag with the US flag, for example. Shared by posters and thumbnails.</div>';
-            h += '<div class="badge-cards flag-cards"></div>';
-            h += '</div></details>';
-            h += '</div>'; // Settings
-            h += '</div></details>';
-            return h;
-        }
-
-        function generatePanels(prefix) {
-            return panelHTML(prefix, 'Res') + panelHTML(prefix, 'Hdr') + panelHTML(prefix, 'Codec') + panelHTML(prefix, 'Audio') + langPanelHTML(prefix) + subPanelHTML(prefix) + panelHTML(prefix, 'Runtime') + panelHTML(prefix, 'Rating');
-        }
-
-        // ===== Panel reordering =====
-        function movePanelUp(btn) {
-            var panel = btn.closest('.jellytag-sub');
-            var prev = panel.previousElementSibling;
-            if (prev && prev.classList.contains('jellytag-sub')) {
-                panel.parentNode.insertBefore(panel, prev);
-                updateArrowStates(panel.parentNode);
-            }
-        }
-        function movePanelDown(btn) {
-            var panel = btn.closest('.jellytag-sub');
-            var next = panel.nextElementSibling;
-            if (next && next.classList.contains('jellytag-sub')) {
-                panel.parentNode.insertBefore(next, panel);
-                updateArrowStates(panel.parentNode);
-            }
-        }
-        function updateArrowStates(container) {
-            var panels = container.querySelectorAll(':scope > .jellytag-sub');
-            panels.forEach(function(p, i) {
-                var up = p.querySelector('.panel-move-up');
-                var down = p.querySelector('.panel-move-down');
-                if (up) up.disabled = (i === 0);
-                if (down) down.disabled = (i === panels.length - 1);
-            });
-            refreshInlineStates(container);
-        }
-
-        // Mirrors JoinsLine in ImageOverlayService: a panel joins the last row at its position
-        // only if that row exists and the row's first panel is Horizontal. A panel that shows no
-        // badge for an item is skipped at render time, which the page cannot know.
-        function refreshInlineStates(container) {
-            var prefix = container.id.replace(/Panels$/, '');
-            var rowLayoutByPosition = {};
-            container.querySelectorAll(':scope > .jellytag-sub').forEach(function(p) {
-                var k = prefix + p.getAttribute('data-panel-id');
-                var inline = document.getElementById(k + 'Inline');
-                var layout = document.getElementById(k + 'Layout').value;
-                var position = document.getElementById(k + 'Position').value;
-                var rowLayout = rowLayoutByPosition[position];
-                var reason = rowLayout === undefined ? 'No effect: first enabled panel at this position.'
-                    : rowLayout !== 'Horizontal' ? 'No effect: this row starts with a Vertical panel.' : '';
-                inline.disabled = reason !== '';
-                var box = inline.closest('.checkboxContainer');
-                var desc = box.querySelector('.fieldDescription');
-                if (!desc) {
-                    desc = document.createElement('div');
-                    desc.className = 'fieldDescription';
-                    box.appendChild(desc);
-                }
-                desc.textContent = reason;
-                desc.classList.toggle('hidden', !reason);
-                if (!document.getElementById(k + 'Enabled').checked) return;
-                if (!(inline.checked && !reason)) rowLayoutByPosition[position] = layout;
-            });
-        }
-        function sortPanelsByOrder(container, orderMap) {
-            var panels = Array.from(container.querySelectorAll(':scope > .jellytag-sub'));
-            panels.sort(function(a, b) {
-                var oa = orderMap[a.getAttribute('data-panel-id')] || 0;
-                var ob = orderMap[b.getAttribute('data-panel-id')] || 0;
-                return oa - ob;
-            });
-            panels.forEach(function(p) { container.appendChild(p); });
-            updateArrowStates(container);
-        }
-        function getPanelOrder(container) {
-            var order = {};
-            container.querySelectorAll(':scope > .jellytag-sub').forEach(function(p, i) {
-                order[p.getAttribute('data-panel-id')] = i;
-            });
-            return order;
-        }
-
-        // ===== Override state management =====
-        var overrideStates = {};
-
-        function initOverrides(key, globalVals, typeOverrides) {
-            var s = { current: '__global__', values: {} };
-            s.values['__global__'] = {
-                bgColor: globalVals.TextBgColor || '#000000',
-                bgOpacity: globalVals.TextBgOpacity != null ? globalVals.TextBgOpacity : 180,
-                textColor: globalVals.TextColor || '#FFFFFF',
-                cornerRadius: globalVals.TextCornerRadius != null ? globalVals.TextCornerRadius : 25
-            };
-            (typeOverrides || []).forEach(function(o) {
-                var bk = o.BadgeKey || o.badgeKey;
-                if (bk) {
-                    s.values[bk] = {
-                        bgColor: o.BgColor || o.bgColor || null,
-                        bgOpacity: o.BgOpacity != null ? o.BgOpacity : (o.bgOpacity != null ? o.bgOpacity : null),
-                        textColor: o.TextColor || o.textColor || null,
-                        cornerRadius: o.CornerRadius != null ? o.CornerRadius : (o.cornerRadius != null ? o.cornerRadius : null)
-                    };
-                }
-            });
-            overrideStates[key] = s;
-        }
-
-        function saveCurrentOverride(key) {
-            var s = overrideStates[key]; if (!s) return;
-            var bgc = document.querySelector('#' + key + 'BgColor');
-            if (!bgc) return;
-            var vals = {
-                bgColor: bgc.value,
-                bgOpacity: parseInt(document.querySelector('#' + key + 'BgOpacity').value, 10),
-                textColor: document.querySelector('#' + key + 'TextColor').value,
-                cornerRadius: parseInt(document.querySelector('#' + key + 'CornerRadius').value, 10)
-            };
-            if (s.current === '__global__') {
-                s.values['__global__'] = vals;
-            } else {
-                var g = s.values['__global__'];
-                if (vals.bgColor !== g.bgColor || vals.bgOpacity !== g.bgOpacity || vals.textColor !== g.textColor || vals.cornerRadius !== g.cornerRadius) {
-                    s.values[s.current] = vals;
-                } else {
-                    delete s.values[s.current];
-                }
-            }
-        }
-
-        function setTextFields(key, v) {
-            document.querySelector('#' + key + 'BgColor').value = v.bgColor || '#000000';
-            document.querySelector('#' + key + 'BgOpacity').value = v.bgOpacity != null ? v.bgOpacity : 180;
-            document.querySelector('#' + key + 'TextColor').value = v.textColor || '#FFFFFF';
-            document.querySelector('#' + key + 'CornerRadius').value = v.cornerRadius != null ? v.cornerRadius : 25;
-        }
-
-        function loadOverrideValues(key, badgeKey) {
-            var s = overrideStates[key]; if (!s) return;
-            saveCurrentOverride(key);
-            s.current = badgeKey;
-            setTextFields(key, s.values[badgeKey] || s.values['__global__']);
-            refreshBadgeSelLabels(key);
-        }
-
-        // A dot marks the badges whose text style differs from the panel's global one.
-        function refreshBadgeSelLabels(key) {
-            var s = overrideStates[key], selEl = document.querySelector('#' + key + 'BadgeSel');
-            if (!s || !selEl) return;
-            Array.prototype.forEach.call(selEl.options, function(o) {
-                if (!o.hasAttribute('data-label')) o.setAttribute('data-label', o.textContent);
-                var custom = o.value !== '__global__' && s.values[o.value];
-                o.textContent = (custom ? '\u2022 ' : '') + o.getAttribute('data-label');
-            });
-        }
-
-        // On a badge: drop its own style. On "Global (all)": drop every badge's own style.
-        function resetTextOverride(key) {
-            var s = overrideStates[key]; if (!s) return;
-            if (s.current === '__global__') {
-                var custom = Object.keys(s.values).filter(function(bk) { return bk !== '__global__'; });
-                if (custom.length === 0 || !confirm('Reset ' + custom.length + ' customized badge(s) to the global style?')) return;
-                custom.forEach(function(bk) { delete s.values[bk]; });
-            } else {
-                delete s.values[s.current];
-                setTextFields(key, s.values['__global__']);
-            }
-            refreshBadgeSelLabels(key);
-            // Same event as a field edit, so the live preview refreshes.
-            document.querySelector('#' + key + 'BgColor').dispatchEvent(new Event('change', { bubbles: true }));
-        }
-
-        function collectOverrides(key) {
-            saveCurrentOverride(key);
-            var s = overrideStates[key]; if (!s) return { textBgColor: '#000000', textBgOpacity: 180, textColor: '#FFFFFF', textCornerRadius: 25, overrides: [] };
-            var g = s.values['__global__'];
-            var ov = [];
-            Object.keys(s.values).forEach(function(bk) {
-                if (bk === '__global__') return;
-                var v = s.values[bk];
-                ov.push({ BadgeKey: bk, BgColor: v.bgColor, BgOpacity: v.bgOpacity, TextColor: v.textColor, CornerRadius: v.cornerRadius });
-            });
-            return { textBgColor: g.bgColor, textBgOpacity: g.bgOpacity, textColor: g.textColor, textCornerRadius: g.cornerRadius, overrides: ov };
-        }
-
-        // ===== Show/hide toggles =====
-        function setupStyleToggle(key) {
-            var styleEl = document.querySelector('#' + key + 'Style');
-            var textDiv = document.querySelector('#' + key + 'TextSettings');
-            if (!styleEl || !textDiv) return;
-            var images = document.querySelector('#' + key + 'CustomImages');
-            var texts = document.querySelector('#' + key + 'CustomTexts');
-            function toggle() {
-                var isText = styleEl.value === 'Text';
-                textDiv.classList.toggle('hidden', !isText);
-                var def = PANEL_DEFS[key.replace(/^(Poster|Thumb)/, '')];
-                if (images) images.classList.toggle('hidden', isText && !(def && def.iconImages));
-                if (texts) texts.classList.toggle('hidden', !isText);
-            }
-            styleEl.addEventListener('change', toggle);
-            toggle();
-        }
-
-        function setupEnableToggle(key) {
-            var enEl = document.querySelector('#' + key + 'Enabled');
-            var setDiv = document.querySelector('#' + key + 'Settings');
-            if (!enEl || !setDiv) return;
-            function toggle() { enEl.checked ? setDiv.classList.remove('hidden') : setDiv.classList.add('hidden'); }
-            enEl.addEventListener('change', toggle);
-            toggle();
-        }
-
-        function setupBadgeSelToggle(key) {
-            var selEl = document.querySelector('#' + key + 'BadgeSel');
-            if (!selEl) return;
-            selEl.addEventListener('change', function() { loadOverrideValues(key, selEl.value); });
-            ['BgColor', 'BgOpacity', 'TextColor', 'CornerRadius'].forEach(function(f) {
-                document.querySelector('#' + key + f).addEventListener('change', function() {
-                    saveCurrentOverride(key);
-                    refreshBadgeSelLabels(key);
-                });
-            });
-            var resetEl = document.querySelector('#' + key + 'ResetText');
-            if (resetEl) resetEl.addEventListener('click', function() { resetTextOverride(key); });
-        }
-
-        function setupLangShowModeToggle(prefix) {
-            var k = prefix + 'Lang';
-            var showEl = document.querySelector('#' + k + 'ShowMode');
-            var layoutWrap = document.querySelector('#' + k + 'LayoutWrap');
-            var gapWrap = document.querySelector('#' + k + 'GapWrap');
-            if (!showEl) return;
-            function toggle() {
-                var hide = showEl.value === 'Highest';
-                if (layoutWrap) layoutWrap.classList.toggle('hidden', hide);
-                if (gapWrap) gapWrap.classList.toggle('hidden', hide);
-            }
-            showEl.addEventListener('change', toggle);
-            toggle();
-        }
-
         // ===== Language picker: names from Jellyfin's own list, codes stored =====
         var cultures = [];          // [{name, codes:[...]}] sorted by name, from /Localization/Cultures
-        var langCodeStates = {};    // panel key -> selected codes
 
         function loadCultures() {
             var token = ApiClient.accessToken();
@@ -695,7 +259,6 @@
                     .filter(function(c) { return c.ThreeLetterISOLanguageName; })
                     .map(function(c) { return { name: c.DisplayName, code: c.ThreeLetterISOLanguageName, codes: c.ThreeLetterISOLanguageNames || [c.ThreeLetterISOLanguageName] }; })
                     .sort(function(a, b) { return a.name.localeCompare(b.name); });
-                Object.keys(langCodeStates).forEach(renderLangPicker);
             }).catch(function(err) { console.error('[JellyTag] Failed to load languages:', err); });
         }
 
@@ -706,446 +269,11 @@
             return null;
         }
 
-        function renderLangPicker(key) {
-            var codes = langCodeStates[key] || [];
-            var chips = document.querySelector('#' + key + 'LangChips');
-            var addEl = document.querySelector('#' + key + 'LangAdd');
-            if (!chips || !addEl) return;
-            chips.innerHTML = '';
-            codes.forEach(function(code) {
-                var c = cultureOf(code);
-                var chip = document.createElement('span'); chip.className = 'lang-chip';
-                chip.appendChild(document.createTextNode(c ? c.name : code));
-                var rm = document.createElement('button'); rm.type = 'button'; rm.title = 'Remove'; rm.textContent = '\u00D7';
-                rm.addEventListener('click', function() {
-                    langCodeStates[key] = codes.filter(function(x) { return x !== code; });
-                    renderLangPicker(key);
-                    addEl.dispatchEvent(new Event('change', { bubbles: true }));  // live preview
-                });
-                chip.appendChild(rm); chips.appendChild(chip);
-            });
-            addEl.innerHTML = '<option value="">Add a language\u2026</option>';
-            cultures.forEach(function(c) {
-                var taken = codes.some(function(x) { return c.codes.indexOf(x) >= 0; });
-                if (!taken) addEl.insertAdjacentHTML('beforeend', '<option value="' + c.code + '">' + c.name + '</option>');
-            });
-        }
-
-        function setupLangFilterToggle(key) {
-            var modeEl = document.querySelector('#' + key + 'LangFilter');
-            var codesWrap = document.querySelector('#' + key + 'LangCodesWrap');
-            var chips = document.querySelector('#' + key + 'LangChips');
-            var addEl = document.querySelector('#' + key + 'LangAdd');
-            if (!modeEl || !codesWrap) return;
-            function toggle() {
-                var all = modeEl.value === 'All';
-                codesWrap.classList.toggle('hidden', all);
-                if (chips) chips.classList.toggle('hidden', all);
-            }
-            modeEl.addEventListener('change', toggle);
-            if (addEl) addEl.addEventListener('change', function() {
-                if (!addEl.value) return;
-                (langCodeStates[key] = langCodeStates[key] || []).push(addEl.value);
-                renderLangPicker(key);
-            });
-            toggle();
-        }
-
-        function setupHdrCodecShowMode(prefix) {
-            var resEn = document.querySelector('#' + prefix + 'ResEnabled');
-            var resShow = document.querySelector('#' + prefix + 'ResShowMode');
-            if (!resEn || !resShow) return;
-            function update() {
-                var mode = resEn.checked ? resShow.value : 'All';
-                ['Codec'].forEach(function(pid) {
-                    var el = document.querySelector('#' + prefix + pid + 'ShowMode');
-                    if (el) el.value = mode;
-                });
-            }
-            resEn.addEventListener('change', update);
-            resShow.addEventListener('change', update);
-        }
-
-        function setupThumbShowHideLayout(prefix) {
-            if (prefix !== 'Thumb') return;
-            ['Res', 'Codec'].forEach(function(pid) {
-                var showEl = document.querySelector('#' + prefix + pid + 'ShowMode');
-                if (!showEl && pid !== 'Res') return;
-                var effectiveShow = function() {
-                    if (pid === 'Res') return document.querySelector('#' + prefix + 'ResShowMode').value;
-                    var resEn = document.querySelector('#' + prefix + 'ResEnabled');
-                    var resShow = document.querySelector('#' + prefix + 'ResShowMode');
-                    return (resEn && resEn.checked) ? resShow.value : 'All';
-                };
-                function toggle() {
-                    var hide = effectiveShow() === 'Highest';
-                    var lw = document.querySelector('#' + prefix + pid + 'LayoutWrap');
-                    var gw = document.querySelector('#' + prefix + pid + 'GapWrap');
-                    if (lw) lw.classList.toggle('hidden', hide);
-                    if (gw) gw.classList.toggle('hidden', hide);
-                }
-                var resShowEl = document.querySelector('#' + prefix + 'ResShowMode');
-                var resEnEl = document.querySelector('#' + prefix + 'ResEnabled');
-                if (resShowEl) resShowEl.addEventListener('change', toggle);
-                if (resEnEl) resEnEl.addEventListener('change', toggle);
-                toggle();
-            });
-        }
-
-        // Only the checked badges can be customized.
-        function setupCustomRows(key) {
-            var rows = document.querySelectorAll('[data-check^="' + key + '"]');
-            var selEl = document.querySelector('#' + key + 'BadgeSel');
-            var def = PANEL_DEFS[key.replace(/^(Poster|Thumb)/, '')];
-            function update() {
-                var any = false;
-                rows.forEach(function(row) {
-                    var cb = document.querySelector('#' + row.getAttribute('data-check'));
-                    var on = !!(cb && cb.checked);
-                    row.classList.toggle('hidden', !on);
-                    any = any || on;
-                });
-                var empty = document.querySelector('#' + key + 'CustomEmpty');
-                if (empty) empty.classList.toggle('hidden', any);
-                if (selEl && def) {
-                    def.badges.forEach(function(b) {
-                        var cb = document.querySelector('#' + key + b.id);
-                        var opt = selEl.querySelector('option[value="' + b.key + '"]');
-                        if (opt) opt.hidden = !(cb && cb.checked);
-                    });
-                }
-            }
-            if (def) def.badges.forEach(function(b) {
-                var cb = document.querySelector('#' + key + b.id);
-                if (cb) cb.addEventListener('change', update);
-            });
-            update();
-        }
-
-        function setupAllToggles(prefix) {
-            ['Res', 'Hdr', 'Codec', 'Audio', 'Runtime', 'Rating'].forEach(function(pid) {
-                setupCustomRows(prefix + pid);
-                setupEnableToggle(prefix + pid);
-                setupStyleToggle(prefix + pid);
-                setupBadgeSelToggle(prefix + pid);
-            });
-            setupEnableToggle(prefix + 'Lang');
-            setupStyleToggle(prefix + 'Lang');
-            setupLangShowModeToggle(prefix);
-            setupLangFilterToggle(prefix + 'Lang');
-            setupEnableToggle(prefix + 'Sub');
-            setupLangFilterToggle(prefix + 'Sub');
-            setupHdrCodecShowMode(prefix);
-            setupThumbShowHideLayout(prefix);
-        }
-
-        // ===== Config loading =====
-        function q(id) { return document.querySelector('#' + id); }
-
-        function loadPanelConfig(prefix, panelId, pc) {
-            if (!pc) return;
-            var k = prefix + panelId;
-            q(k + 'Enabled').checked = pc.Enabled !== false;
-            q(k + 'Position').value = pc.Position || 'TopLeft';
-            if (pc.ShowMode && q(k + 'ShowMode')) q(k + 'ShowMode').value = pc.ShowMode;
-            q(k + 'Layout').value = pc.Layout || 'Vertical';
-            q(k + 'Inline').checked = pc.InlineWithPrevious === true;
-            q(k + 'Gap').value = pc.GapPercent != null ? pc.GapPercent : 10;
-            q(k + 'Size').value = pc.SizePercent != null ? pc.SizePercent : 15;
-            q(k + 'Margin').value = pc.MarginPercent != null ? pc.MarginPercent : 2.5;
-            q(k + 'Style').value = PANEL_DEFS[panelId].textOnly ? 'Text' : (pc.Style || 'Image');
-
-            // Badges
-            var en = pc.EnabledBadges || [];
-            var def = PANEL_DEFS[panelId];
-            if (def) {
-                def.badges.forEach(function(b) {
-                    var el = q(k + b.id);
-                    if (el) {
-                        if (b.key === 'channel') {
-                            el.checked = en.indexOf('7.1') >= 0 || en.indexOf('5.1') >= 0 || en.indexOf('stereo') >= 0;
-                        } else {
-                            el.checked = en.indexOf(b.key) >= 0;
-                        }
-                    }
-                });
-            }
-
-            // Text override state
-            initOverrides(k, pc, pc.BadgeTypeOverrides || []);
-            var g = overrideStates[k].values['__global__'];
-            q(k + 'BgColor').value = g.bgColor;
-            q(k + 'BgOpacity').value = g.bgOpacity;
-            q(k + 'TextColor').value = g.textColor;
-            q(k + 'CornerRadius').value = g.cornerRadius;
-            if (q(k + 'BadgeSel')) q(k + 'BadgeSel').value = '__global__';
-            refreshBadgeSelLabels(k);
-        }
-
-        function loadLangConfig(prefix, lc, itc) {
-            if (!lc) return;
-            var k = prefix + 'Lang';
-            q(k + 'Enabled').checked = lc.Enabled !== false;
-            q(k + 'Position').value = lc.Position || 'TopLeft';
-            q(k + 'ShowMode').value = lc.ShowMode || 'All';
-            q(k + 'Layout').value = lc.Layout || 'Vertical';
-            q(k + 'Inline').checked = lc.InlineWithPrevious === true;
-            q(k + 'Gap').value = lc.GapPercent != null ? lc.GapPercent : 10;
-            q(k + 'Size').value = lc.SizePercent != null ? lc.SizePercent : 15;
-            q(k + 'Margin').value = lc.MarginPercent != null ? lc.MarginPercent : 2.5;
-            q(k + 'Style').value = lc.Style || 'Image';
-            q(k + 'BgColor').value = lc.TextBgColor || '#000000';
-            q(k + 'BgOpacity').value = lc.TextBgOpacity != null ? lc.TextBgOpacity : 180;
-            q(k + 'TextColor').value = lc.TextColor || '#FFFFFF';
-            q(k + 'CornerRadius').value = lc.TextCornerRadius != null ? lc.TextCornerRadius : 25;
-            loadLangFilter(k, lc);
-        }
-
-        function loadLangFilter(k, pc) {
-            q(k + 'LangFilter').value = pc.LanguageFilter || 'All';
-            langCodeStates[k] = (pc.LanguageCodes || []).slice();
-            renderLangPicker(k);
-            q(k + 'HideUnd').checked = pc.HideUndefinedLanguage !== false;
-        }
-
-        function loadSubConfig(prefix, sc) {
-            if (!sc) return;
-            var k = prefix + 'Sub';
-            q(k + 'Enabled').checked = sc.Enabled !== false;
-            q(k + 'Scope').value = sc.SubtitlesWithoutAudioOnly === false ? 'All' : 'WithoutAudio';
-            q(k + 'Label').value = sc.SubtitleLabel || 'Code';
-            q(k + 'Position').value = sc.Position || 'TopLeft';
-            q(k + 'Layout').value = sc.Layout || 'Vertical';
-            q(k + 'Inline').checked = sc.InlineWithPrevious === true;
-            q(k + 'Gap').value = sc.GapPercent != null ? sc.GapPercent : 10;
-            q(k + 'Size').value = sc.SizePercent != null ? sc.SizePercent : 15;
-            q(k + 'Margin').value = sc.MarginPercent != null ? sc.MarginPercent : 2.5;
-            q(k + 'BgColor').value = sc.TextBgColor || '#000000';
-            q(k + 'BgOpacity').value = sc.TextBgOpacity != null ? sc.TextBgOpacity : 255;
-            q(k + 'TextColor').value = sc.TextColor || '#FFFFFF';
-            q(k + 'CornerRadius').value = sc.TextCornerRadius != null ? sc.TextCornerRadius : 10;
-            loadLangFilter(k, sc);
-        }
-
-        function loadImageTypeConfig(prefix, itc) {
-            if (!itc) return;
-            q(prefix + 'Enabled').checked = itc.Enabled !== false;
-            loadPanelConfig(prefix, 'Res', itc.ResolutionPanel);
-            loadPanelConfig(prefix, 'Hdr', itc.HdrPanel);
-            loadPanelConfig(prefix, 'Codec', itc.CodecPanel);
-            loadPanelConfig(prefix, 'Audio', itc.AudioPanel);
-            loadPanelConfig(prefix, 'Runtime', itc.RuntimePanel);
-            if (itc.RatingPanel) loadPanelConfig(prefix, 'Rating', itc.RatingPanel);
-            loadLangConfig(prefix, itc.LanguagePanel, itc);
-            loadSubConfig(prefix, itc.SubtitlePanel);
-            // Sort panels by Order
-            var orderMap = {
-                Res: (itc.ResolutionPanel || {}).Order || 0,
-                Hdr: (itc.HdrPanel || {}).Order || 0,
-                Codec: (itc.CodecPanel || {}).Order || 0,
-                Audio: (itc.AudioPanel || {}).Order || 0,
-                Lang: (itc.LanguagePanel || {}).Order || 0,
-                Sub: (itc.SubtitlePanel || {}).Order || 0,
-                Runtime: (itc.RuntimePanel || {}).Order || 5,
-                Rating: (itc.RatingPanel || {}).Order || 7
-            };
-            var container = document.getElementById(prefix + 'Panels');
-            if (container) sortPanelsByOrder(container, orderMap);
-        }
-
-        // ===== Config saving =====
-        function collectPanelBadges(prefix, panelId) {
-            var def = PANEL_DEFS[panelId];
-            var k = prefix + panelId;
-            var badges = [];
-            def.badges.forEach(function(b) {
-                var el = q(k + b.id);
-                if (def.single || (el && el.checked)) {
-                    if (b.key === 'channel') {
-                        badges.push('7.1'); badges.push('5.1'); badges.push('stereo');
-                    } else {
-                        badges.push(b.key);
-                    }
-                }
-            });
-            return badges;
-        }
-
-        function collectPanelConfig(prefix, panelId, order) {
-            var k = prefix + panelId;
-            var ov = collectOverrides(k);
-            return {
-                Enabled: q(k + 'Enabled').checked,
-                Position: q(k + 'Position').value,
-                ShowMode: q(k + 'ShowMode') ? q(k + 'ShowMode').value : (PANEL_DEFS[panelId].fixedShowMode || 'Highest'),
-                Layout: q(k + 'Layout').value,
-                InlineWithPrevious: q(k + 'Inline').checked,
-                GapPercent: parseFloat(q(k + 'Gap').value) || 0,
-                SizePercent: parseInt(q(k + 'Size').value, 10) || 15,
-                MarginPercent: numOr(k + 'Margin', 2.5),
-                Style: q(k + 'Style').value,
-                Order: order,
-                TextBgColor: ov.textBgColor,
-                TextBgOpacity: ov.textBgOpacity,
-                TextColor: ov.textColor,
-                TextCornerRadius: ov.textCornerRadius,
-                EnabledBadges: collectPanelBadges(prefix, panelId),
-                BadgeTypeOverrides: ov.overrides
-            };
-        }
-
-        function collectLangConfig(prefix) {
-            var k = prefix + 'Lang';
-            var container = document.getElementById(prefix + 'Panels');
-            var order = container ? getPanelOrder(container) : {Lang:4};
-            return {
-                Enabled: q(k + 'Enabled').checked,
-                Position: q(k + 'Position').value,
-                ShowMode: q(k + 'ShowMode').value,
-                Layout: q(k + 'Layout').value,
-                InlineWithPrevious: q(k + 'Inline').checked,
-                GapPercent: parseFloat(q(k + 'Gap').value) || 0,
-                SizePercent: parseInt(q(k + 'Size').value, 10) || 15,
-                MarginPercent: numOr(k + 'Margin', 2.5),
-                Style: q(k + 'Style').value,
-                Order: order.Lang != null ? order.Lang : 4,
-                TextBgColor: q(k + 'BgColor').value,
-                TextBgOpacity: parseInt(q(k + 'BgOpacity').value, 10) || 0,
-                TextColor: q(k + 'TextColor').value,
-                TextCornerRadius: parseInt(q(k + 'CornerRadius').value, 10) || 0,
-                EnabledBadges: [],
-                BadgeTypeOverrides: [],
-                LanguageFilter: q(k + 'LangFilter').value,
-                LanguageCodes: (langCodeStates[k] || []).slice(),
-                HideUndefinedLanguage: q(k + 'HideUnd').checked
-            };
-        }
-
-        function collectSubConfig(prefix, order) {
-            var k = prefix + 'Sub';
-            return {
-                Enabled: q(k + 'Enabled').checked,
-                Position: q(k + 'Position').value,
-                ShowMode: 'All',
-                Layout: q(k + 'Layout').value,
-                InlineWithPrevious: q(k + 'Inline').checked,
-                GapPercent: parseFloat(q(k + 'Gap').value) || 0,
-                SizePercent: parseInt(q(k + 'Size').value, 10) || 15,
-                MarginPercent: numOr(k + 'Margin', 2.5),
-                Style: 'Text',
-                Order: order,
-                TextBgColor: q(k + 'BgColor').value,
-                TextBgOpacity: parseInt(q(k + 'BgOpacity').value, 10) || 0,
-                TextColor: q(k + 'TextColor').value,
-                TextCornerRadius: parseInt(q(k + 'CornerRadius').value, 10) || 0,
-                EnabledBadges: [],
-                BadgeTypeOverrides: [],
-                LanguageFilter: q(k + 'LangFilter').value,
-                LanguageCodes: (langCodeStates[k] || []).slice(),
-                HideUndefinedLanguage: q(k + 'HideUnd').checked,
-                SubtitlesWithoutAudioOnly: q(k + 'Scope').value === 'WithoutAudio',
-                SubtitleLabel: q(k + 'Label').value
-            };
-        }
-
-        function collectImageTypeConfig(prefix) {
-            var k = prefix + 'Lang';
-            var container = document.getElementById(prefix + 'Panels');
-            var order = container ? getPanelOrder(container) : {Res:0,Hdr:1,Codec:2,Audio:3,Lang:4,Sub:5,Runtime:6,Rating:7};
-            return {
-                Enabled: q(prefix + 'Enabled').checked,
-                ResolutionPanel: collectPanelConfig(prefix, 'Res', order.Res || 0),
-                HdrPanel: collectPanelConfig(prefix, 'Hdr', order.Hdr || 0),
-                CodecPanel: collectPanelConfig(prefix, 'Codec', order.Codec || 0),
-                AudioPanel: collectPanelConfig(prefix, 'Audio', order.Audio || 0),
-                LanguagePanel: collectLangConfig(prefix),
-                SubtitlePanel: collectSubConfig(prefix, order.Sub != null ? order.Sub : 5),
-                RuntimePanel: collectPanelConfig(prefix, 'Runtime', order.Runtime != null ? order.Runtime : 6),
-                RatingPanel: collectPanelConfig(prefix, 'Rating', order.Rating != null ? order.Rating : 7)
-            };
-        }
-
-        function collectConfigFromForm(config) {
-            config.Enabled = q('Enabled').checked;
-            config.ThumbnailSameAsPoster = q('ThumbnailSameAsPoster').checked;
-            config.ShowOnEpisodes = q('ShowOnEpisodes').checked;
-            config.ThumbnailSizeReduction = parseInt(q('ThumbnailSizeReduction').value, 10) || 0;
-            config.PosterConfig = collectImageTypeConfig('Poster');
-            config.ThumbnailConfig = collectImageTypeConfig('Thumb');
-            config.ExcludedLibraryIds = collectExcludedLibraries();
-
-            // Nullify legacy
-            config.PosterSettings = null;
-            config.ThumbnailSettings = null;
-            config.BackdropSettings = null;
-            config.Show4K = null; config.Show1080p = null; config.Show720p = null; config.ShowSD = null;
-            config.ShowHdr10 = null; config.ShowHdr10Plus = null; config.ShowDolbyVision = null;
-            config.ShowHlg = null; config.ShowGenericHdr = null; config.Show3D = null;
-            config.ShowH264 = null; config.ShowHevc = null; config.ShowAv1 = null; config.ShowVp9 = null;
-            config.ShowDolbyAtmos = null; config.ShowDtsX = null; config.ShowTrueHD = null;
-            config.ShowDtsHdMa = null; config.ShowChannelBadge = null;
-            config.LanguageBadgeMode = null; config.ShowSubtitleIndicator = null;
-
-            // Custom badge texts: one value per key (poster and thumbnail fields are kept in sync)
-            var saveCbt = [], seen = {};
-            document.querySelectorAll('.cbt-input').forEach(function(el) {
-                var key = el.getAttribute('data-badge-key'), val = el.value.trim();
-                if (val && !seen[key]) { seen[key] = true; saveCbt.push({ Key: key, Text: val }); }
-            });
-            config.CustomBadgeTexts = saveCbt;
-
-            config.CacheDurationHours = parseInt(q('CacheDurationHours').value, 10);
-            config.OutputFormat = q('OutputFormat').value;
-            config.JpegQuality = parseInt(q('JpegQuality').value, 10);
-            config.WebPQuality = parseInt(q('WebPQuality').value, 10);
-            return config;
-        }
-
         // ===== Utility =====
         function toggleOutputQuality() {
             var fmt = q('OutputFormat').value;
             document.querySelector('#JpegQualityContainer').style.display = fmt === 'Jpeg' ? '' : 'none';
             document.querySelector('#WebPQualityContainer').style.display = fmt === 'WebP' ? '' : 'none';
-        }
-
-        function toggleThumbSameAsPoster() {
-            var same = q('ThumbnailSameAsPoster').checked;
-            var c = document.querySelector('#ThumbFieldsContainer');
-            if (c) c.classList.toggle('hidden', same);
-            var r = document.querySelector('#ThumbSizeReductionWrap');
-            if (r) r.classList.toggle('hidden', !same);
-        }
-
-        // ===== Library filter =====
-        function loadLibraryCheckboxes(excludedIds) {
-            var container = document.querySelector('#LibraryCheckboxes');
-            var token = ApiClient.accessToken();
-            var headers = {}; if (token) headers['Authorization'] = 'MediaBrowser Token="' + token + '"';
-            fetch(ApiClient.getUrl('Library/VirtualFolders'), {headers:headers}).then(function(r){return r.json();}).then(function(folders) {
-                container.innerHTML = '';
-                folders.forEach(function(folder) {
-                    var folderId = folder.ItemId;
-                    var isExcluded = excludedIds.indexOf(folderId) >= 0;
-                    var div = document.createElement('div');
-                    div.className = 'checkboxContainer checkboxContainer-withDescription';
-                    div.innerHTML = '<label class="emby-checkbox-label">' +
-                        '<input type="checkbox" is="emby-checkbox" class="libCheckbox" data-library-id="' + folderId + '"' + (isExcluded ? '' : ' checked') + ' />' +
-                        '<span>' + folder.Name + '</span></label>';
-                    container.appendChild(div);
-                });
-                if (folders.length === 0) container.innerHTML = '<em>No libraries found.</em>';
-            }).catch(function(err) {
-                console.error('[JellyTag] Failed to load libraries:', err);
-                container.innerHTML = '<em>Failed to load libraries.</em>';
-            });
-        }
-
-        function collectExcludedLibraries() {
-            var excluded = [];
-            document.querySelectorAll('#LibraryCheckboxes .libCheckbox').forEach(function(cb) {
-                if (!cb.checked) excluded.push(cb.getAttribute('data-library-id'));
-            });
-            return excluded;
         }
 
         // ===== Badge images =====
@@ -1187,13 +315,13 @@
             Promise.all([getJson('JellyTag/CustomBadges'), getJson('JellyTag/Flags')]).then(function(res) {
                 var customList = res[0], flags = res[1];
                 document.querySelectorAll('.badge-cards[data-keys]').forEach(function(box) {
-                    box.innerHTML = '';
+                    box.replaceChildren();
                     box.getAttribute('data-keys').split(',').forEach(function(key) {
                         addBadgeCard(box, {key:key, label:KEY_LABELS[key] || key}, customList, token);
                     });
                 });
                 document.querySelectorAll('.flag-cards').forEach(function(box) {
-                    box.innerHTML = '';
+                    box.replaceChildren();
                     flags.forEach(function(code) { addBadgeCard(box, {key:'flag-' + code, label:code}, customList, token); });
                 });
             }).catch(function(err) { console.error('[JellyTag] Badge gallery error:', err); });
@@ -1212,45 +340,329 @@
             }).catch(function(){document.querySelector('#CacheStatsInfo').textContent='';});
         }
 
+        // ===== Settings model =====
+        // The configuration object is the only source of truth: every change goes into it, and the
+        // sections are drawn again from it. Save sends it as it is.
+        var DEFAULT_PROFILE_ID = 'daeb47a3cbe444559dd2aa166fd7fcb1';
+        var IMAGE_TYPES = [{v:'Primary',l:'Poster'},{v:'Thumb',l:'Thumbnail'},{v:'Backdrop',l:'Backdrop'},{v:'Logo',l:'Logo'}];
+        var PANEL_TYPE_LABELS = {Resolution:'Resolution', Hdr:'HDR / 3D', Codec:'Codec', Audio:'Audio', Language:'Language', Subtitle:'Subtitles', Runtime:'Video length', Rating:'Rating', Library:'Library'};
+        var POSITION_LABELS = {TopLeft:'Top left', TopCenter:'Top center', TopRight:'Top right', BottomLeft:'Bottom left', BottomCenter:'Bottom center', BottomRight:'Bottom right'};
+
+        var state = { config: null, libraries: [], defaults: null, profileId: DEFAULT_PROFILE_ID, tab: 'Primary', dirty: false };
+
+        function q(id) { return document.querySelector('#' + id); }
+        function authHeaders() { var t = ApiClient.accessToken(); return t ? {'Authorization': 'MediaBrowser Token="' + t + '"'} : {}; }
+        function getJson(path) { return fetch(ApiClient.getUrl(path), {headers: authHeaders()}).then(function(r) { if (!r.ok) throw new Error(path + ': ' + r.status); return r.json(); }); }
+
+        // The API writes GUIDs without dashes; compare them in that form.
+        function sameId(a, b) { return String(a || '').replace(/-/g, '').toLowerCase() === String(b || '').replace(/-/g, '').toLowerCase(); }
+        // crypto.randomUUID needs a secure context (HTTPS), which a LAN server often is not.
+        function newId() { var b = new Uint8Array(16); crypto.getRandomValues(b); return Array.prototype.map.call(b, function(x) { return ('0' + x.toString(16)).slice(-2); }).join(''); }
+        function clone(o) { return JSON.parse(JSON.stringify(o)); }
+        function typeLabel(t) { return IMAGE_TYPES.filter(function(i) { return i.v === t; })[0].l; }
+        function profileName(p) { return p.Name || 'Default'; }
+
+        // ===== DOM building =====
+        // Elements are built with textContent, never from HTML strings: library and profile names are
+        // typed by users and must not be read as markup.
+        var PROPS = { text: 'textContent', class: 'className', for: 'htmlFor', checked: 'checked', selected: 'selected', disabled: 'disabled', value: 'value', title: 'title', type: 'type', min: 'min', max: 'max', step: 'step', id: 'id' };
+        function el(tag, attrs, children) {
+            attrs = attrs || {};
+            // Jellyfin's polyfill upgrades an element that has its "is" attribute when it is inserted
+            // into the page; its createElement does not take the { is } option of the standard.
+            var node = document.createElement(tag);
+            if (attrs.is) node.setAttribute('is', attrs.is);
+            Object.keys(attrs).forEach(function(k) {
+                var v = attrs[k];
+                if (k === 'is' || v == null || v === false) return;
+                if (PROPS[k]) node[PROPS[k]] = v;
+                else node.setAttribute(k, v === true ? '' : v);
+            });
+            (children || []).forEach(function(c) {
+                if (c != null) node.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+            });
+            return node;
+        }
+        function selectField(id, label, options, attrs) {
+            var select = el('select', Object.assign({ is: 'emby-select', id: id }, attrs || {}),
+                options.map(function(o) { return el('option', { value: o.v, text: o.l, selected: !!o.selected }); }));
+            return el('div', { class: 'inputContainer' }, [el('label', { class: 'inputLabel inputLabelUnfocused', for: id, text: label }), select]);
+        }
+        function numberField(id, label, min, max, step, value) {
+            return el('div', { class: 'inputContainer' }, [
+                el('label', { class: 'inputLabel inputLabelUnfocused', for: id, text: label }),
+                el('input', { is: 'emby-input', id: id, type: 'number', min: min, max: max, step: step, value: value })
+            ]);
+        }
+        function checkField(id, label, description, checked) {
+            return el('div', { class: 'checkboxContainer checkboxContainer-withDescription' }, [
+                el('label', { class: 'emby-checkbox-label' }, [el('input', { is: 'emby-checkbox', id: id, type: 'checkbox', checked: !!checked }), el('span', { text: label })]),
+                description ? el('div', { class: 'fieldDescription', text: description }) : null
+            ]);
+        }
+        function actionButton(text, action, attrs) {
+            return el('button', Object.assign({ is: 'emby-button', type: 'button', class: 'raised', 'data-action': action }, attrs || {}), [el('span', { text: text })]);
+        }
+        function arrowButtons(upAction, downAction, index, count) {
+            return el('span', { class: 'jellytag-arrows' }, [
+                el('button', { type: 'button', title: 'Move up', 'data-action': upAction, 'data-index': index, disabled: index === 0, text: '▲' }),
+                el('button', { type: 'button', title: 'Move down', 'data-action': downAction, 'data-index': index, disabled: index === count - 1, text: '▼' })
+            ]);
+        }
+
+        function currentProfile() {
+            var profiles = state.config.Profiles;
+            return profiles.filter(function(p) { return sameId(p.Id, state.profileId); })[0] || profiles[0];
+        }
+        function imageOf(profile, type) { return profile.Images.filter(function(i) { return i.ImageType === type; })[0]; }
+        function isDefaultProfile(p) { return sameId(p.Id, DEFAULT_PROFILE_ID); }
+
+        function markDirty() { state.dirty = true; renderSaveState(); }
+        function renderSaveState() {
+            q('SaveBar').classList.toggle('dirty', state.dirty);
+            q('DirtyState').textContent = state.dirty ? 'Unsaved changes' : 'All changes saved';
+        }
+
+        function renderAll() {
+            renderGlobals();
+            renderProfiles();
+            renderLibraries();
+            renderTabs();
+            renderImageTab();
+            renderSaveState();
+        }
+
+        // ===== General and performance =====
+        function renderGlobals() {
+            var c = state.config;
+            q('Enabled').checked = c.Enabled;
+            q('CacheDurationHours').value = c.CacheDurationHours;
+            q('OutputFormat').value = c.OutputFormat;
+            q('JpegQuality').value = c.JpegQuality;
+            q('WebPQuality').value = c.WebPQuality;
+            toggleOutputQuality();
+        }
+
+        // ===== Profiles =====
+        function renderProfiles() {
+            var p = currentProfile();
+            var options = state.config.Profiles.map(function(o) { return { v: o.Id, l: profileName(o), selected: sameId(o.Id, p.Id) }; });
+            q('ProfileSection').replaceChildren(
+                el('div', { class: 'jellytag-toolbar' }, [
+                    selectField('ProfileSelect', 'Editing profile', options),
+                    actionButton('New', 'profile-new'),
+                    actionButton('Rename', 'profile-rename'),
+                    actionButton('Delete', 'profile-delete', { disabled: isDefaultProfile(p) })
+                ]),
+                checkField('ShowOnEpisodes', 'Badges on episodes', 'Episode images use the thumbnail settings.', p.ShowOnEpisodes !== false));
+        }
+
+        function newProfile() {
+            var p = currentProfile();
+            var name = prompt('Name of the new profile (a copy of "' + profileName(p) + '"):', '');
+            if (!name || !name.trim()) return;
+            var copy = clone(p);
+            copy.Id = newId();
+            copy.Name = name.trim();
+            state.config.Profiles.push(copy);
+            state.profileId = copy.Id;
+            markDirty();
+            renderAll();
+        }
+
+        function renameProfile() {
+            var p = currentProfile();
+            var name = prompt('New name of the profile:', profileName(p));
+            if (!name || !name.trim()) return;
+            p.Name = name.trim();
+            markDirty();
+            renderAll();
+        }
+
+        function deleteProfile() {
+            var p = currentProfile();
+            if (isDefaultProfile(p)) return;
+            if (!confirm('Delete the profile "' + p.Name + '"? Its libraries will use the Default profile.')) return;
+            state.config.Profiles = state.config.Profiles.filter(function(o) { return !sameId(o.Id, p.Id); });
+            state.config.LibraryAssignments.forEach(function(a) { if (sameId(a.ProfileId, p.Id)) a.ProfileId = DEFAULT_PROFILE_ID; });
+            state.profileId = DEFAULT_PROFILE_ID;
+            markDirty();
+            renderAll();
+        }
+
+        // ===== Libraries =====
+        // Every library has a row, in the saved order; libraries added since then go last, on Default.
+        function syncLibraryRows() {
+            var known = state.libraries;
+            var rows = (state.config.LibraryAssignments || []).filter(function(a) {
+                return known.some(function(l) { return sameId(l.Id, a.LibraryId); });
+            });
+            known.forEach(function(l) {
+                if (!rows.some(function(a) { return sameId(a.LibraryId, l.Id); })) rows.push({ LibraryId: l.Id, ProfileId: DEFAULT_PROFILE_ID });
+            });
+            state.config.LibraryAssignments = rows;
+        }
+
+        function renderLibraries() {
+            var rows = state.config.LibraryAssignments;
+            if (!rows.length) { q('LibraryTable').replaceChildren(el('em', { text: 'No libraries found.' })); return; }
+            var body = el('tbody', {}, rows.map(function(a, i) {
+                var lib = state.libraries.filter(function(l) { return sameId(l.Id, a.LibraryId); })[0];
+                var options = state.config.Profiles.map(function(p) { return { v: p.Id, l: profileName(p), selected: sameId(a.ProfileId, p.Id) }; });
+                options.push({ v: '', l: 'No badges', selected: a.ProfileId == null });
+                var select = el('select', { is: 'emby-select', 'data-lib-index': i, title: 'Profile' },
+                    options.map(function(o) { return el('option', { value: o.v, text: o.l, selected: o.selected }); }));
+                return el('tr', {}, [
+                    el('td', { class: 'lib-name', text: lib ? lib.Name : a.LibraryId }),
+                    el('td', {}, [select]),
+                    el('td', {}, [arrowButtons('lib-up', 'lib-down', i, rows.length)])
+                ]);
+            }));
+            q('LibraryTable').replaceChildren(el('table', { class: 'jellytag-libs' }, [body]));
+        }
+
+        function moveLibrary(index, delta) {
+            var rows = state.config.LibraryAssignments, j = index + delta;
+            if (j < 0 || j >= rows.length) return;
+            var row = rows.splice(index, 1)[0];
+            rows.splice(j, 0, row);
+            markDirty();
+            renderLibraries();
+        }
+
+        // ===== Image types =====
+        function renderTabs() {
+            q('ImageTabs').replaceChildren.apply(q('ImageTabs'), IMAGE_TYPES.map(function(t) {
+                return el('button', { type: 'button', 'data-action': 'tab', 'data-tab': t.v, class: t.v === state.tab ? 'active' : null, text: t.l });
+            }));
+            q('ImagesTitle').textContent = 'Images of "' + profileName(currentProfile()) + '"';
+        }
+
+        function renderImageTab() {
+            var p = currentProfile(), img = imageOf(p, state.tab), label = typeLabel(state.tab);
+            var copiedBy = p.Images.filter(function(i) { return i.SameAs === state.tab; }).map(function(i) { return typeLabel(i.ImageType); });
+
+            // Only image types with their own settings can be copied: no chain of copies.
+            var modes = [{ v: '', l: 'Own settings', selected: !img.SameAs }];
+            p.Images.forEach(function(o) {
+                if (o.ImageType !== state.tab && !o.SameAs) modes.push({ v: o.ImageType, l: 'Same as ' + typeLabel(o.ImageType), selected: img.SameAs === o.ImageType });
+            });
+            var mode = selectField('ImageMode', 'Settings', modes, { disabled: copiedBy.length > 0 });
+            if (copiedBy.length) mode.appendChild(el('div', { class: 'fieldDescription', text: copiedBy.join(', ') + ' copies these settings.' }));
+
+            q('ImageTab').replaceChildren(
+                checkField('ImageEnabled', 'Badges on ' + label.toLowerCase() + ' images', null, img.Enabled),
+                el('div', { class: 'jellytag-row' }, [
+                    mode,
+                    img.SameAs ? numberField('ImageSizeReduction', 'Size reduction (% image width)', 0, 50, 1, img.SizeReduction || 0) : null
+                ]),
+                img.SameAs
+                    ? el('div', { class: 'fieldDescription', text: 'Uses the ' + typeLabel(img.SameAs) + ' settings.' })
+                    : el('div', { id: 'ZoneGrid' }, placementSummary(img)));
+        }
+
+        // Read-only list of the zones until the placement editor exists.
+        function placementSummary(img) {
+            if (!img.Zones.length) return [el('div', { class: 'fieldDescription', text: 'No badges placed.' })];
+            return img.Zones.map(function(z) {
+                var lines = z.Lines.map(function(l) {
+                    return l.Panels.map(function(p) { return PANEL_TYPE_LABELS[p.Type] || p.Type; }).join(', ');
+                });
+                return el('div', { class: 'jellytag-zone-summary' }, [
+                    el('b', { text: POSITION_LABELS[z.Position] }),
+                    (z.Arrangement === 'Rows' ? 'rows: ' : 'columns: ') + lines.join(' | ')
+                ]);
+            });
+        }
+
+        // ===== Events =====
+        var configForm = document.querySelector('#JellyTagConfigForm');
+        var saveError = document.querySelector('#SaveError');
+
+        configForm.addEventListener('click', function(e) {
+            var target = e.target.closest('[data-action]');
+            if (!target || target.disabled) return;
+            var action = target.getAttribute('data-action');
+            var index = parseInt(target.getAttribute('data-index'), 10);
+            if (action === 'profile-new') newProfile();
+            else if (action === 'profile-rename') renameProfile();
+            else if (action === 'profile-delete') deleteProfile();
+            else if (action === 'lib-up') moveLibrary(index, -1);
+            else if (action === 'lib-down') moveLibrary(index, 1);
+            else if (action === 'tab') { state.tab = target.getAttribute('data-tab'); renderTabs(); renderImageTab(); }
+        });
+
+        configForm.addEventListener('change', function(e) {
+            var field = e.target, p = currentProfile();
+            if (field.id === 'ProfileSelect') { state.profileId = field.value; renderAll(); return; }
+
+            // An out-of-range number stays out of the settings: Save then reports it (see below).
+            if (field.type === 'number' && !field.validity.valid) return;
+            var global = field.getAttribute('data-global');
+            if (global) {
+                state.config[global] = field.type === 'checkbox' ? field.checked : field.type === 'number' ? parseInt(field.value, 10) : field.value;
+                if (global === 'OutputFormat') toggleOutputQuality();
+            } else if (field.id === 'ShowOnEpisodes') {
+                p.ShowOnEpisodes = field.checked;
+            } else if (field.hasAttribute('data-lib-index')) {
+                state.config.LibraryAssignments[parseInt(field.getAttribute('data-lib-index'), 10)].ProfileId = field.value || null;
+            } else if (field.id === 'ImageEnabled') {
+                imageOf(p, state.tab).Enabled = field.checked;
+            } else if (field.id === 'ImageMode') {
+                imageOf(p, state.tab).SameAs = field.value || null;
+                renderImageTab();
+            } else if (field.id === 'ImageSizeReduction') {
+                imageOf(p, state.tab).SizeReduction = parseInt(field.value, 10);
+            } else {
+                return;
+            }
+            markDirty();
+        });
+
+        configForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            saveError.classList.add('hidden');
+            Dashboard.showLoadingMsg();
+            ApiClient.updatePluginConfiguration(JellyTagConfig.pluginUniqueId, state.config).then(function(result) {
+                Dashboard.processPluginConfigurationUpdateResult(result);
+                // The server repairs and converts what it saves: show what it kept.
+                return ApiClient.getPluginConfiguration(JellyTagConfig.pluginUniqueId);
+            }).then(function(config) {
+                state.config = config;
+                state.dirty = false;
+                syncLibraryRows();
+                renderAll();
+            }).catch(function(err) {
+                Dashboard.hideLoadingMsg();
+                saveError.textContent = 'Not saved: ' + (err && err.message ? err.message : err);
+                saveError.classList.remove('hidden');
+            });
+            return false;
+        });
+
+        // The dashboard is a single-page app: this only covers closing or reloading the tab.
+        window.addEventListener('beforeunload', function(e) {
+            if (state.dirty && document.querySelector('#JellyTagConfigPage')) { e.preventDefault(); e.returnValue = ''; }
+        });
+
         // ===== Page Show =====
         document.querySelector('#JellyTagConfigPage').addEventListener('pageshow', function() {
-            // Generate panels
-            document.getElementById('PosterPanels').innerHTML = generatePanels('Poster');
-            document.getElementById('ThumbPanels').innerHTML = generatePanels('Thumb');
-
             Dashboard.showLoadingMsg();
-            ApiClient.getPluginConfiguration(JellyTagConfig.pluginUniqueId).then(function(config) {
-                q('Enabled').checked = config.Enabled;
-                q('ThumbnailSameAsPoster').checked = config.ThumbnailSameAsPoster === true;
-                q('ShowOnEpisodes').checked = config.ShowOnEpisodes !== false;
-                q('ThumbnailSizeReduction').value = config.ThumbnailSizeReduction != null ? config.ThumbnailSizeReduction : 10;
-
-                loadImageTypeConfig('Poster', config.PosterConfig || {});
-                loadImageTypeConfig('Thumb', config.ThumbnailConfig || {});
-
-                // Custom Badge Texts
-                var cbtInputs = document.querySelectorAll('.cbt-input');
-                var cbtList = config.CustomBadgeTexts || [];
-                var cbtMap = {};
-                cbtList.forEach(function(item) { cbtMap[item.Key || item.key] = item.Text || item.text; });
-                cbtInputs.forEach(function(el) { el.value = cbtMap[el.getAttribute('data-badge-key')] || ''; });
-
-                q('CacheDurationHours').value = config.CacheDurationHours;
-                q('OutputFormat').value = config.OutputFormat;
-                q('JpegQuality').value = config.JpegQuality;
-                q('WebPQuality').value = config.WebPQuality;
-                toggleOutputQuality();
-
-                // Setup all toggles
-                setupAllToggles('Poster');
-                setupAllToggles('Thumb');
-                q('ThumbnailSameAsPoster').addEventListener('change', toggleThumbSameAsPoster);
-                toggleThumbSameAsPoster();
-
-                loadLibraryCheckboxes(config.ExcludedLibraryIds || []);
+            Promise.all([
+                ApiClient.getPluginConfiguration(JellyTagConfig.pluginUniqueId),
+                getJson('Library/VirtualFolders'),
+                getJson('JellyTag/PanelDefaults')
+            ]).then(function(res) {
+                state.config = res[0];
+                state.libraries = res[1].map(function(f) { return { Id: f.ItemId, Name: f.Name }; });
+                state.defaults = res[2];
+                state.profileId = DEFAULT_PROFILE_ID;
+                state.dirty = false;
+                syncLibraryRows();
+                renderAll();
                 Dashboard.hideLoadingMsg();
             }).catch(function(err) {
-                console.error('[JellyTag] Failed to load config:', err);
+                console.error('[JellyTag] Failed to load the settings:', err);
                 Dashboard.hideLoadingMsg();
                 Dashboard.alert('Failed to load JellyTag configuration.');
             });
@@ -1258,33 +670,6 @@
             loadBadgeGallery();
             loadCultures();
             loadCacheStats();
-            toggleOutputQuality();
-
-            var panel = document.querySelector('.jellytag-preview-panel');
-            var form = document.querySelector('#JellyTagConfigForm');
-            if (panel && form) {
-                function positionPanel() {
-                    if (window.innerWidth <= 1000) { panel.style.left = ''; return; }
-                    var rect = form.getBoundingClientRect();
-                    panel.style.left = (rect.right + 16) + 'px';
-                }
-                positionPanel();
-                window.addEventListener('resize', positionPanel);
-            }
-        });
-
-        // ===== Form Submit =====
-        document.querySelector('#JellyTagConfigForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            saveError.classList.add('hidden');
-            Dashboard.showLoadingMsg();
-            ApiClient.getPluginConfiguration(JellyTagConfig.pluginUniqueId).then(function(config) {
-                collectConfigFromForm(config);
-                ApiClient.updatePluginConfiguration(JellyTagConfig.pluginUniqueId, config).then(function() {
-                    Dashboard.processPluginConfigurationUpdateResult();
-                });
-            });
-            return false;
         });
 
         // ===== Field Validation =====
@@ -1322,19 +707,11 @@
                 panel && panel.querySelector('summary').firstChild.textContent,
                 label ? label.textContent : field.id].filter(Boolean).join(' › ');
         }
-        var configForm = document.querySelector('#JellyTagConfigForm');
-        var saveError = document.querySelector('#SaveError');
         configForm.addEventListener('input', function(e) {
             if (e.target.type !== 'number') return;
             markField(e.target);
             if (!configForm.querySelector('.jellytag-invalid')) saveError.classList.add('hidden');
         });
-        configForm.addEventListener('change', function(e) {
-            if (!/(Enabled|Position|Layout|Inline)$/.test(e.target.id)) return;
-            var container = e.target.closest('[id$="Panels"]');
-            if (container) refreshInlineStates(container);
-        });
-
         // The browser fires 'invalid' once per bad field, then cancels the submit; its own bubble
         // only works on a visible field, so inside a collapsed section Save did nothing (#27).
         // 'invalid' does not bubble: listen in the capture phase.
@@ -1407,48 +784,10 @@
             }
         });
 
-        // Custom texts are global: mirror a field into its twin in the other image type.
-        document.querySelector('#JellyTagConfigForm').addEventListener('input', function(e) {
-            if (!e.target.classList.contains('cbt-input')) return;
-            var key = e.target.getAttribute('data-badge-key');
-            document.querySelectorAll('.cbt-input').forEach(function(el) {
-                if (el !== e.target && el.getAttribute('data-badge-key') === key) el.value = e.target.value;
-            });
-        });
-
         var outputFmtEl = document.querySelector('#OutputFormat');
         outputFmtEl.addEventListener('change', toggleOutputQuality);
         outputFmtEl.addEventListener('input', toggleOutputQuality);
 
-        // ===== Live Preview =====
-        (function() {
-            var previewItemId=null,previewItemName='',searchTimer=null,refreshTimer=null,refreshing=false;
-            var searchInput=document.querySelector('#PreviewSearch'),searchResults=document.querySelector('#PreviewSearchResults');
-            var selectedEl=document.querySelector('#PreviewSelected'),spinner=document.querySelector('#PreviewSpinner');
-            var posterImg=document.querySelector('#PreviewPoster'),thumbImg=document.querySelector('#PreviewThumb');
-            var errorEl=document.querySelector('#PreviewError'),refreshBtn=document.querySelector('#RefreshPreview');
-            searchInput.addEventListener('input',function(){clearTimeout(searchTimer);var qry=searchInput.value.trim();
-                if(qry.length<2){searchResults.style.display='none';return;}
-                searchTimer=setTimeout(function(){ApiClient.getItems(ApiClient.getCurrentUserId(),{SearchTerm:qry,IncludeItemTypes:'Movie',Limit:8,Recursive:true,Fields:'PrimaryImageAspectRatio'}).then(function(result){
-                    searchResults.innerHTML='';if(!result.Items||result.Items.length===0){searchResults.innerHTML='<div class="preview-search-item" style="color:#aaa;">No results</div>';searchResults.style.display='block';return;}
-                    result.Items.forEach(function(item){var div=document.createElement('div');div.className='preview-search-item';div.textContent=item.Name+(item.ProductionYear?' ('+item.ProductionYear+')':'');
-                        div.addEventListener('click',function(){previewItemId=item.Id;previewItemName=item.Name+(item.ProductionYear?' ('+item.ProductionYear+')':'');selectedEl.textContent=previewItemName;searchResults.style.display='none';searchInput.value='';refreshPreview();});
-                        searchResults.appendChild(div);});searchResults.style.display='block';});},300);});
-            document.addEventListener('click',function(e){if(!searchResults.contains(e.target)&&e.target!==searchInput)searchResults.style.display='none';});
-            function refreshPreview(){if(!previewItemId||refreshing)return;refreshing=true;errorEl.style.display='none';errorEl.textContent='';spinner.style.display='block';
-                ApiClient.getPluginConfiguration(JellyTagConfig.pluginUniqueId).then(function(config){collectConfigFromForm(config);return ApiClient.updatePluginConfiguration(JellyTagConfig.pluginUniqueId,config);}).then(function(){
-                    return ApiClient.ajax({type:'POST',url:ApiClient.getUrl('JellyTag/ClearCache')});}).then(function(){
-                    var token=ApiClient.accessToken();var bust='_t='+Date.now();var tp=token?'&ApiKey='+token:'';
-                    var pu=ApiClient.getUrl('Items/'+previewItemId+'/Images/Primary')+'?'+bust+tp;
-                    var tu=ApiClient.getUrl('Items/'+previewItemId+'/Images/Thumb')+'?'+bust+tp;
-                    var pl=new Promise(function(res){var img=new Image();img.onload=function(){posterImg.src=pu;posterImg.style.display='block';res();};img.onerror=function(){posterImg.style.display='none';res();};img.src=pu;});
-                    var tl=new Promise(function(res){var img=new Image();img.onload=function(){thumbImg.src=tu;thumbImg.style.display='block';res();};img.onerror=function(){thumbImg.style.display='none';res();};img.src=tu;});
-                    return Promise.all([pl,tl]);}).then(function(){spinner.style.display='none';refreshing=false;}).catch(function(err){spinner.style.display='none';refreshing=false;errorEl.textContent='Preview error: '+(err.message||err);errorEl.style.display='block';});}
-            var form=document.querySelector('#JellyTagConfigForm');
-            form.addEventListener('input',function(e){if(e.target.closest('.jellytag-preview-panel'))return;clearTimeout(refreshTimer);refreshTimer=setTimeout(refreshPreview,1500);});
-            form.addEventListener('change',function(e){if(e.target.closest('.jellytag-preview-panel'))return;clearTimeout(refreshTimer);refreshTimer=setTimeout(refreshPreview,1500);});
-            refreshBtn.addEventListener('click',function(){clearTimeout(refreshTimer);refreshPreview();});
-        })();
         </script>
     </div>
 </body>
