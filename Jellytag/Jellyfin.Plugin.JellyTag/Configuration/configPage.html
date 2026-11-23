@@ -95,9 +95,16 @@
             .zone-newline { display: none; padding: .15em; border: 1px dashed rgba(255,255,255,.3); border-radius: 1em; color: #aaa; font-size: .75em; text-align: center; }
             .jellytag-zone-grid.dragging .zone-newline { display: block; }
             .zone-newline.over { background: rgba(0,164,220,.25); border-color: #00a4dc; color: #fff; }
-            .zone-head { display: flex; justify-content: space-between; align-items: center; font-size: .85em; color: #aaa; }
+            .zone-head { display: flex; align-items: center; gap: .3em; min-height: 26px; font-size: .85em; color: #aaa; }
+            .zone-title { flex: 1; }
+            .zone-gear:disabled { opacity: .3; cursor: default; }
+            .zone-actions button { width: 22px; height: 22px; font-size: .75em; }
+            .zone-actions .zone-remove { font-size: 1.1em; line-height: 1; }
+            .zone-actions .zone-remove:hover { background: #c62828; }
+            .zone-controls { display: flex; gap: .3em; margin-top: auto; }
+            .zone-controls .zone-add { flex: 1; min-width: 0; margin-top: 0; }
             .zone-gear { background: none; border: none; color: inherit; cursor: pointer; font-size: 1.2em; padding: 0 .2em; }
-            .zone-gear.active, .zone-gear:hover { color: #00a4dc; }
+            .zone-gear.active, .zone-gear:not(:disabled):hover { color: #00a4dc; }
             .zone-lines { display: flex; gap: .3em; }
             .zone-lines.rows { flex-direction: column; }
             .zone-lines.columns { flex-direction: row; align-items: flex-start; }
@@ -757,34 +764,58 @@
             return p.indexOf('Right') > 0 ? '\u2190' : '\u2192';
         }
 
+        // Arrows follow the screen: in rows, left/right stay in the line; in columns, up/down do.
+        function panelActions(at, type) {
+            var rows = at.zone.Arrangement === 'Rows';
+            var horizontal = rows ? 'move-inline' : 'move-across', vertical = rows ? 'move-across' : 'move-inline';
+            function arrow(text, title, action, delta) {
+                var enabled = action === 'move-inline' ? canMoveInLine(at, delta) : canMoveAcross(at, delta);
+                return el('button', { type: 'button', title: title, 'data-action': action, 'data-delta': delta, 'data-type': type, disabled: !enabled, text: text });
+            }
+            return el('span', { class: 'jellytag-arrows zone-actions' }, [
+                arrow('◀', 'Move left', horizontal, -1),
+                arrow('▶', 'Move right', horizontal, 1),
+                arrow('▲', 'Move up', vertical, -1),
+                arrow('▼', 'Move down', vertical, 1),
+                el('button', { type: 'button', class: 'zone-remove', title: 'Remove the panel', 'data-action': 'remove-panel', 'data-type': type, text: '×' })
+            ]);
+        }
+
         function renderGrid(img) {
             var editing = state.editing || {};
+            var selected = editing.kind === 'panel' ? locate(img, editing.type) : null;
+            var missing = PANEL_TYPES.filter(function(t) { return !locate(img, t); });
             return el('div', { class: 'jellytag-zone-grid' }, POSITIONS.map(function(position) {
                 var zone = zoneAt(img, position);
+                // The selected panel's actions sit in the header of its zone.
+                var holdsSelected = !!(selected && selected.zone === zone);
                 var head = el('div', { class: 'zone-head' }, [
-                    el('span', {}, [POSITION_LABELS[position], zone ? el('span', { class: 'zone-direction', title: zone.Arrangement === 'Rows' ? 'Horizontal' : 'Vertical', text: directionArrow(zone) }) : null]),
-                    zone ? el('button', { type: 'button', class: 'zone-gear' + (editing.kind === 'zone' && editing.position === position ? ' active' : ''),
-                        title: 'Zone settings', 'data-action': 'edit-zone', 'data-position': position, text: '⚙' }) : null
+                    el('button', { type: 'button', class: 'zone-gear' + (editing.kind === 'zone' && editing.position === position ? ' active' : ''),
+                        title: zone ? 'Zone settings' : 'Add a panel first', disabled: !zone, 'data-action': 'edit-zone', 'data-position': position, text: '⚙' }),
+                    el('span', { class: 'zone-title' }, [POSITION_LABELS[position], zone ? el('span', { class: 'zone-direction', title: zone.Arrangement === 'Rows' ? 'Horizontal' : 'Vertical', text: directionArrow(zone) }) : null]),
+                    holdsSelected ? panelActions(selected, editing.type) : null
                 ]);
                 var lines = zone ? el('div', { class: 'zone-lines ' + (zone.Arrangement === 'Rows' ? 'rows' : 'columns') }, zone.Lines.map(function(line) {
                     return el('div', { class: 'zone-line' }, line.Panels.map(function(p) {
-                        var selected = editing.kind === 'panel' && editing.type === p.Type;
+                        var isSelected = editing.kind === 'panel' && editing.type === p.Type;
                         // A div: Firefox does not start a drag from a button.
-                        return el('div', { class: 'panel-chip' + (selected ? ' selected' : ''), role: 'button', tabindex: 0, draggable: 'true',
+                        return el('div', { class: 'panel-chip' + (isSelected ? ' selected' : ''), role: 'button', tabindex: 0, draggable: 'true',
                             title: PANEL_TYPE_LABELS[p.Type], 'data-action': 'edit-panel', 'data-type': p.Type, text: CHIP_LABELS[p.Type] || p.Type });
                     }));
                 })) : null;
-                var missing = PANEL_TYPES.filter(function(t) { return !locate(img, t); });
                 var add = missing.length ? el('select', { class: 'zone-add', 'data-add-position': position, title: 'Add a panel' },
                     [el('option', { value: '', text: '+ Add panel' })].concat(missing.map(function(t) { return el('option', { value: t, text: PANEL_TYPE_LABELS[t] }); }))) : null;
+                var move = holdsSelected ? el('select', { class: 'zone-add', 'data-move-to': editing.type, title: 'Move the panel to another zone' },
+                    [el('option', { value: '', text: 'Move to…' })].concat(POSITIONS.filter(function(p) { return p !== position; })
+                        .map(function(p) { return el('option', { value: p, text: POSITION_LABELS[p] }); }))) : null;
                 var newLine = el('div', { class: 'zone-newline', 'data-drop-position': position, text: 'New line' });
-                return el('div', { class: 'zone-cell' + (zone ? '' : ' empty') }, [head, lines, newLine, add]);
+                return el('div', { class: 'zone-cell' + (zone ? '' : ' empty') }, [head, lines, newLine, el('div', { class: 'zone-controls' }, [add, move])]);
             }));
         }
 
         function renderEditor(img) {
             var editing = state.editing;
-            if (!editing) return el('div', { class: 'fieldDescription', text: 'Select a panel or a zone settings button to edit it.' });
+            if (!editing) return el('div', { class: 'fieldDescription', text: 'Select a panel, or the ⚙ of a zone, to edit it.' });
 
             if (editing.kind === 'zone') {
                 var zone = zoneAt(img, editing.position);
@@ -808,27 +839,8 @@
             var at = locate(img, editing.type);
             if (!at) return null;
             var rows = at.zone.Arrangement === 'Rows';
-            // Arrows follow the screen: in rows, left/right stay in the line; in columns, up/down do.
-            var horizontal = rows ? 'move-inline' : 'move-across', vertical = rows ? 'move-across' : 'move-inline';
-            function arrow(text, title, action, delta) {
-                var enabled = action === 'move-inline' ? canMoveInLine(at, delta) : canMoveAcross(at, delta);
-                return el('button', { type: 'button', title: title, 'data-action': action, 'data-delta': delta, 'data-type': editing.type, disabled: !enabled, text: text });
-            }
-            var moveOptions = [{ v: '', l: 'Move to…' }].concat(POSITIONS.filter(function(p) { return p !== at.zone.Position; })
-                .map(function(p) { return { v: p, l: POSITION_LABELS[p] }; }));
             return el('div', { class: 'jellytag-editor' }, [
                 el('h4', { text: PANEL_TYPE_LABELS[editing.type] + ' — ' + POSITION_LABELS[at.zone.Position] + ', ' + (rows ? 'row ' : 'column ') + (at.lineIndex + 1) }),
-                el('div', { class: 'jellytag-toolbar' }, [
-                    el('span', { class: 'jellytag-arrows' }, [
-                        arrow('◀', 'Move left', horizontal, -1),
-                        arrow('▶', 'Move right', horizontal, 1),
-                        arrow('▲', 'Move up', vertical, -1),
-                        arrow('▼', 'Move down', vertical, 1)
-                    ]),
-                    el('select', { class: 'zone-add', 'data-move-to': editing.type, title: 'Move to another zone' },
-                        moveOptions.map(function(o) { return el('option', { value: o.v, text: o.l }); })),
-                    actionButton('Remove', 'remove-panel', { 'data-type': editing.type })
-                ]),
                 el('div', { id: 'PanelSettings' }, renderPanelSettings(at.line.Panels[at.index]))
             ]);
         }
@@ -1136,7 +1148,13 @@
             else if (action === 'lib-down') moveLibrary(index, 1);
             else if (action === 'tab') { state.tab = target.getAttribute('data-tab'); state.editing = null; renderTabs(); renderImageTab(); }
             else if (action === 'edit-zone') { state.editing = { kind: 'zone', position: target.getAttribute('data-position') }; renderImageTab(); }
-            else if (action === 'edit-panel') { state.editing = { kind: 'panel', type: target.getAttribute('data-type') }; state.colorKey = ''; renderImageTab(); }
+            else if (action === 'edit-panel') {
+                var type = target.getAttribute('data-type');
+                var again = state.editing && state.editing.kind === 'panel' && state.editing.type === type;
+                state.editing = again ? null : { kind: 'panel', type: type };
+                state.colorKey = '';
+                renderImageTab();
+            }
             else if (action === 'lang-remove' || action === 'reset-colors') onPanelSettingClick(action, target);
             else if (action === 'move-inline') moveInLine(target.getAttribute('data-type'), parseInt(target.getAttribute('data-delta'), 10));
             else if (action === 'move-across') moveAcross(target.getAttribute('data-type'), parseInt(target.getAttribute('data-delta'), 10));
