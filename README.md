@@ -52,6 +52,7 @@ configuration.
 ## Screenshots
 
 ![Library view with badges](Jellytag/Jellyfin.Plugin.JellyTag/screenshots/library.png)
+![Zoomed poster](Jellytag/Jellyfin.Plugin.JellyTag/screenshots/big.png)
 ![Configuration page](Jellytag/Jellyfin.Plugin.JellyTag/screenshots/config.png)
 
 ## Installation
