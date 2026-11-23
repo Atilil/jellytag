@@ -223,34 +223,30 @@ public class PluginConfiguration : BasePluginConfiguration
 
     public bool Enabled { get; set; }
 
-    public ImageTypeConfig PosterConfig { get; set; }
-    public ImageTypeConfig ThumbnailConfig { get; set; }
-    public bool ThumbnailSameAsPoster { get; set; }
-
-    /// <summary>
-    /// Whether episode images get badges. Off keeps a series' badges on its poster only.
-    /// </summary>
-    public bool ShowOnEpisodes { get; set; }
-
-    /// <summary>
-    /// Size reduction (in percentage points) applied to badge sizes when ThumbnailSameAsPoster is enabled.
-    /// For example, 10 means a 15% poster badge becomes 5% on thumbnails.
-    /// </summary>
-    public int ThumbnailSizeReduction { get; set; }
-
-    /// <summary>
-    /// Library IDs excluded from badge generation. Empty means all libraries are included.
-    /// </summary>
-    public List<string> ExcludedLibraryIds { get; set; }
-
     public List<BadgeTextOverride> CustomBadgeTexts { get; set; }
     public int CacheDurationHours { get; set; }
     public int JpegQuality { get; set; }
     public OutputImageFormat OutputFormat { get; set; }
     public int WebPQuality { get; set; }
 
-    // Legacy properties kept for deserialization migration
-    // These will be read during migration and then ignored
+    // 3.x settings: read to convert a 3.x file or export (ConfigMigration.FromV3). Once converted, they
+    // are left out of the saved file and of the export: XmlSerializer calls ShouldSerialize<Name>, and
+    // SettingsJson applies the same methods to the JSON export.
+    public ImageTypeConfig PosterConfig { get; set; }
+    public ImageTypeConfig ThumbnailConfig { get; set; }
+    public bool ThumbnailSameAsPoster { get; set; }
+    public bool ShowOnEpisodes { get; set; }
+    public int ThumbnailSizeReduction { get; set; }
+    public List<string> ExcludedLibraryIds { get; set; }
+
+    public bool ShouldSerializePosterConfig() => ConfigVersion < 1;
+    public bool ShouldSerializeThumbnailConfig() => ConfigVersion < 1;
+    public bool ShouldSerializeThumbnailSameAsPoster() => ConfigVersion < 1;
+    public bool ShouldSerializeShowOnEpisodes() => ConfigVersion < 1;
+    public bool ShouldSerializeThumbnailSizeReduction() => ConfigVersion < 1;
+    public bool ShouldSerializeExcludedLibraryIds() => ConfigVersion < 1;
+
+    // Settings of the formats before 3.x, read and cleared by MigrateFromLegacy.
     public ImageTypeSettings? PosterSettings { get; set; }
     public ImageTypeSettings? ThumbnailSettings { get; set; }
     public ImageTypeSettings? BackdropSettings { get; set; }

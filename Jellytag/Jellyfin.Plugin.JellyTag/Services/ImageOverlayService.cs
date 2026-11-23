@@ -724,10 +724,15 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
         return !string.IsNullOrEmpty(badge.DisplayText) ? badge.DisplayText : GetBadgeDisplayText(badge.BadgeKey);
     }
 
-    private static string GetBadgeDisplayText(string badgeKey)
+    private static string GetBadgeDisplayText(string badgeKey) =>
+        BadgeText(badgeKey, Plugin.Instance?.Configuration?.CustomBadgeTexts);
+
+    /// <summary>
+    /// Text of a badge key: its custom text when there is one, the built-in text otherwise.
+    /// </summary>
+    internal static string BadgeText(string badgeKey, IEnumerable<BadgeTextOverride>? customTexts)
     {
-        var config = Plugin.Instance?.Configuration;
-        var customText = config?.CustomBadgeTexts?.FirstOrDefault(x => string.Equals(x.Key, badgeKey, StringComparison.OrdinalIgnoreCase))?.Text;
+        var customText = customTexts?.FirstOrDefault(x => string.Equals(x.Key, badgeKey, StringComparison.OrdinalIgnoreCase))?.Text;
         if (!string.IsNullOrEmpty(customText)) return customText;
         return BadgeDisplayText.TryGetValue(badgeKey, out var text) ? text : badgeKey.ToUpperInvariant();
     }

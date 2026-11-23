@@ -14,11 +14,18 @@ internal static class LibraryBadges
     /// without an assignment in the order Jellyfin gives them. "Highest only" keeps the first one.
     /// </summary>
     /// <param name="libraries">Id ("N" format) and name of each library that holds the item.</param>
-    internal static List<BadgeInfo> For(IReadOnlyList<(string Id, string Name)> libraries, PluginConfiguration config)
+    internal static List<BadgeInfo> For(IReadOnlyList<(string Id, string Name)> libraries, PluginConfiguration config) =>
+        For(libraries, config.LibraryAssignments, config.CustomBadgeTexts);
+
+    /// <param name="libraries">Id ("N" format) and name of each library that holds the item.</param>
+    /// <param name="assignments">The assignment table, which gives the order of the badges.</param>
+    /// <param name="customTexts">Custom badge texts: the saved ones, or the ones of a preview.</param>
+    internal static List<BadgeInfo> For(
+        IReadOnlyList<(string Id, string Name)> libraries, List<LibraryAssignment> assignments, IEnumerable<BadgeTextOverride> customTexts)
     {
         int Rank(string id)
         {
-            var index = config.LibraryAssignments.FindIndex(a => string.Equals(a.LibraryId, id, StringComparison.OrdinalIgnoreCase));
+            var index = assignments.FindIndex(a => string.Equals(a.LibraryId, id, StringComparison.OrdinalIgnoreCase));
             return index < 0 ? int.MaxValue : index;
         }
 
@@ -28,7 +35,7 @@ internal static class LibraryBadges
             {
                 // The key holds the id, not the name, so that a renamed library keeps its custom text and image.
                 var key = KeyPrefix + l.Id.ToLowerInvariant();
-                var customText = config.CustomBadgeTexts
+                var customText = customTexts
                     .FirstOrDefault(t => string.Equals(t.Key, key, StringComparison.OrdinalIgnoreCase))?.Text;
                 return new BadgeInfo
                 {

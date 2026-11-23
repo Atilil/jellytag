@@ -87,9 +87,12 @@ public partial class JellyTagController : ControllerBase
             return NotFound("This item has no such image");
         }
 
+        // Custom texts being edited are not saved yet: the request carries them.
+        var texts = request.CustomBadgeTexts ?? config.CustomBadgeTexts;
         var libraries = _libraryManager.GetCollectionFolders(item).Select(f => (Id: f.Id.ToString("N"), f.Name)).ToList();
         var badges = _qualityService.DetectAllBadges(item)
-            .Concat(LibraryBadges.For(libraries, config))
+            .Select(b => WithText(b, texts))
+            .Concat(LibraryBadges.For(libraries, config.LibraryAssignments, texts))
             .Where(b => _overlayService.ShouldShowBadge(b, request.Image))
             .ToList();
 
@@ -97,6 +100,19 @@ public partial class JellyTagController : ControllerBase
         var (stream, contentType) = await _overlayService.AddBadgeOverlaysAsync(original, badges, request.Image).ConfigureAwait(false);
         return File(stream, contentType);
     }
+
+    // Badges named by their key take their text from the given list; badges with a text of their
+    // own (ratings, video length) keep it. A copy: detected badges are cached and shared.
+    private static BadgeInfo WithText(BadgeInfo badge, IEnumerable<BadgeTextOverride> texts) =>
+        !string.IsNullOrEmpty(badge.DisplayText) ? badge : new BadgeInfo
+        {
+            Category = badge.Category,
+            BadgeKey = badge.BadgeKey,
+            ResourceFileName = badge.ResourceFileName,
+            DisplayText = ImageOverlayService.BadgeText(badge.BadgeKey, texts),
+            HasMatchingAudio = badge.HasMatchingAudio,
+            IconFileName = badge.IconFileName
+        };
 
     /// <summary>
     /// Clears the image cache.
@@ -457,7 +473,7 @@ public partial class JellyTagController : ControllerBase
             return BadRequest("Plugin not loaded");
         }
 
-        var json = JsonSerializer.SerializeToUtf8Bytes(plugin.Configuration, new JsonSerializerOptions { WriteIndented = true });
+        var json = JsonSerializer.SerializeToUtf8Bytes(plugin.Configuration, SettingsJson.Export);
         return File(json, "application/json", "jellytag-config.json");
     }
 
@@ -541,4 +557,9 @@ public class PreviewRequest
     public ImageType ImageType { get; set; } = ImageType.Primary;
     public int ImageIndex { get; set; }
     public ProfileImageConfig Image { get; set; } = new();
+
+    /// <summary>
+    /// Custom badge texts being edited. Null uses the saved ones.
+    /// </summary>
+    public List<BadgeTextOverride>? CustomBadgeTexts { get; set; }
 }

@@ -277,10 +277,14 @@ check "panel defaults: every category for the logo" 9 "$(api GET /JellyTag/Panel
 title="JT 4K"
 id=$(item "$title")
 saved=$(settings | jq -c "$paths poster")
-preview() { api POST /JellyTag/Preview "$(jq -nc --arg id "$id" --argjson image "$1" '{ItemId: $id, ImageType: "Primary", Image: $image}')" | md5sum | cut -d' ' -f1; }
+preview() { # IMAGE_SETTINGS [CUSTOM_TEXTS]
+    api POST /JellyTag/Preview "$(jq -nc --arg id "$id" --argjson image "$1" --argjson texts "${2:-null}" '{ItemId: $id, ImageType: "Primary", Image: $image, CustomBadgeTexts: $texts}')" | md5sum | cut -d' ' -f1
+}
 check "preview: saved settings, same image as the served poster" "$(served "$id")" "$(preview "$saved")"
 check "preview: no zones, original poster" "$(original "$title")" "$(preview "$(jq -c '.Zones = []' <<<"$saved")")"
 check "preview: nothing saved" "$saved" "$(settings | jq -c "$paths poster")"
+text=$(jq -c '(.Zones[].Lines[].Panels[] | select(.Type == "Resolution") | .Style) = "Text"' <<<"$saved")
+check "preview: custom text not saved yet is drawn" true "$([[ $(preview "$text" '[{"Key":"4k","Text":"UHD"}]') != $(preview "$text") ]] && echo true || echo false)"
 
 # --- Episodes (#22): drawn with the thumbnail settings, left alone when switched off
 

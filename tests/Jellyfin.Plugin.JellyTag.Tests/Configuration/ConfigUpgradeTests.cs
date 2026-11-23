@@ -58,10 +58,42 @@ public class ConfigUpgradeTests
         var config = new PluginConfiguration();
         config.Upgrade();
 
-        var json = JsonSerializer.Serialize(config);
+        var json = JsonSerializer.Serialize(config, SettingsJson.Export);
         var imported = JsonSerializer.Deserialize<PluginConfiguration>(json)!;
 
         Assert.False(imported.Upgrade());
-        Assert.Equal(json, JsonSerializer.Serialize(imported));
+        Assert.Equal(json, JsonSerializer.Serialize(imported, SettingsJson.Export));
+    }
+
+    private static string Xml(PluginConfiguration config)
+    {
+        using var writer = new StringWriter();
+        new XmlSerializer(typeof(PluginConfiguration)).Serialize(writer, config);
+        return writer.ToString();
+    }
+
+    // U12: once converted, the 3.x settings are no longer written; config-3.x-backup.json keeps them.
+    [Fact]
+    public void ConvertedSettings_LeaveThe3xFieldsOut()
+    {
+        var config = new PluginConfiguration();
+        config.Upgrade();
+
+        var xml = Xml(config);
+        var json = JsonSerializer.Serialize(config, SettingsJson.Export);
+
+        Assert.Contains("<Profiles>", xml);
+        Assert.DoesNotContain("<PosterConfig>", xml);
+        Assert.DoesNotContain("<ExcludedLibraryIds", xml);
+        Assert.DoesNotContain("<ThumbnailSameAsPoster>", xml);
+        Assert.DoesNotContain("PosterConfig", json);
+        Assert.DoesNotContain("Show4K", json);
+    }
+
+    // A file that is not converted yet keeps them: they are what the conversion reads.
+    [Fact]
+    public void UnconvertedSettings_KeepThe3xFields()
+    {
+        Assert.Contains("<PosterConfig>", Xml(new PluginConfiguration()));
     }
 }

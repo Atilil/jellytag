@@ -62,13 +62,13 @@
             .jellytag-preview-panel .preview-img { width: 100%; max-width: 300px; border-radius: .3em; margin-bottom: .8em; }
             .jellytag-preview-panel .preview-img.poster { aspect-ratio: 2/3; object-fit: cover; max-height: 440px; }
             .jellytag-preview-panel .preview-img.thumb { aspect-ratio: 16/9; object-fit: cover; }
+            .jellytag-preview-panel .preview-img.logo { object-fit: contain; background: repeating-conic-gradient(#555 0% 25%, #333 0% 50%) 50% / 16px 16px; }
             .jellytag-preview-panel .preview-spinner { display: none; text-align: center; color: #aaa; padding: .5em 0; font-size: .9em; }
             .jellytag-preview-panel .preview-error { display: none; color: #e57373; font-size: .85em; margin-top: .5em; }
             @media (max-width: 1000px) {
                 .jellytag-config-layout { margin-right: 0; }
                 .jellytag-preview-panel { position: static; width: 100%; max-width: 100%; max-height: none; margin-bottom: 1em; }
             }
-            .jellytag-config-layout { margin-right: 0; }
             .jellytag-tabs { display: flex; flex-wrap: wrap; gap: .3em; border-bottom: 1px solid rgba(255,255,255,.15); margin-bottom: 1em; }
             .jellytag-tabs button { background: none; border: none; border-bottom: 2px solid transparent; color: inherit; padding: .6em 1em; cursor: pointer; font-size: 1em; }
             .jellytag-tabs button.active { border-bottom-color: #00a4dc; color: #00a4dc; }
@@ -203,6 +203,18 @@
                         <button is="emby-button" type="submit" class="raised button-submit"><span>Save</span></button>
                     </div>
                 </form>
+                <div class="jellytag-preview-panel">
+                    <h3>Live Preview</h3>
+                    <div class="preview-search-wrap">
+                        <input id="PreviewSearch" type="text" is="emby-input" placeholder="Search for a movie, series or episode..." />
+                        <div id="PreviewSearchResults" class="preview-search-results"></div>
+                    </div>
+                    <div id="PreviewSelected" class="preview-selected"></div>
+                    <div id="PreviewSpinner" class="preview-spinner">Refreshing preview...</div>
+                    <img id="PreviewImage" class="preview-img" alt="Preview" style="display:none;" />
+                    <div id="PreviewError" class="preview-error"></div>
+                    <div class="fieldDescription">Shows the active tab with the settings being edited, before they are saved.</div>
+                </div>
                 </div>
             </div>
         </div>
@@ -335,7 +347,7 @@
                 resetBtn.addEventListener('click', function(ev) { ev.stopPropagation();
                     if (confirm('Reset "' + b.label + '" badge to default?')) {
                         Dashboard.showLoadingMsg();
-                        ApiClient.ajax({type:'DELETE',url:ApiClient.getUrl('JellyTag/CustomBadge/'+b.key)}).then(function(){Dashboard.hideLoadingMsg();loadBadgeGallery();});
+                        ApiClient.ajax({type:'DELETE',url:ApiClient.getUrl('JellyTag/CustomBadge/'+b.key)}).then(function(){Dashboard.hideLoadingMsg();loadBadgeGallery();refreshPreview();});
                     }
                 }); card.appendChild(resetBtn);
             }
@@ -465,7 +477,7 @@
         function imageOf(profile, type) { return profile.Images.filter(function(i) { return i.ImageType === type; })[0]; }
         function isDefaultProfile(p) { return sameId(p.Id, DEFAULT_PROFILE_ID); }
 
-        function markDirty() { state.dirty = true; renderSaveState(); }
+        function markDirty() { state.dirty = true; renderSaveState(); schedulePreview(); }
         function renderSaveState() {
             q('SaveBar').classList.toggle('dirty', state.dirty);
             q('DirtyState').textContent = state.dirty ? 'Unsaved changes' : 'All changes saved';
@@ -1131,6 +1143,99 @@
             renderImageTab();
         }
 
+        // ===== Live preview =====
+        // Draws the settings being edited on an image of the chosen item. Nothing is saved: the server
+        // renders the settings sent with the request (POST JellyTag/Preview).
+        var preview = { item: null, timer: null, url: null, seq: 0, searchTimer: null };
+
+        // The settings of the active tab as the server resolves them: a copy of another image type
+        // takes that type's zones with smaller panels.
+        function previewSettings() {
+            var p = currentProfile(), img = imageOf(p, state.tab);
+            var copy = clone(img.SameAs ? imageOf(p, img.SameAs) : img);
+            copy.ImageType = state.tab;
+            copy.SameAs = null;
+            copy.SizeReduction = 0;
+            if (img.SameAs) {
+                copy.Zones.forEach(function(z) { z.Lines.forEach(function(l) { l.Panels.forEach(function(panel) {
+                    panel.SizePercent = Math.max(1, panel.SizePercent - (img.SizeReduction || 0));
+                }); }); });
+            }
+            if (!img.Enabled) copy.Zones = [];
+            return copy;
+        }
+
+        // An episode's 16:9 image is its primary image.
+        function previewImageType() {
+            return state.tab === 'Thumb' && preview.item.Type === 'Episode' ? 'Primary' : state.tab;
+        }
+
+        function schedulePreview() {
+            clearTimeout(preview.timer);
+            preview.timer = setTimeout(refreshPreview, 600);
+        }
+
+        function refreshPreview() {
+            if (!preview.item || !state.config) return;
+            var seq = ++preview.seq, image = q('PreviewImage'), error = q('PreviewError');
+            q('PreviewSpinner').style.display = 'block';
+            error.style.display = 'none';
+            fetch(ApiClient.getUrl('JellyTag/Preview'), {
+                method: 'POST',
+                headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+                body: JSON.stringify({ ItemId: preview.item.Id, ImageType: previewImageType(), Image: previewSettings(), CustomBadgeTexts: state.config.CustomBadgeTexts || [] })
+            }).then(function(r) {
+                if (r.status === 404) throw new Error('This item has no ' + typeLabel(state.tab).toLowerCase() + ' image.');
+                if (!r.ok) throw new Error('Preview failed (' + r.status + ').');
+                return r.blob();
+            }).then(function(blob) {
+                // An answer to an older request, after a newer one was sent: drop it.
+                if (seq !== preview.seq) return;
+                if (preview.url) URL.revokeObjectURL(preview.url);
+                preview.url = URL.createObjectURL(blob);
+                image.src = preview.url;
+                image.className = 'preview-img ' + (state.tab === 'Primary' ? 'poster' : state.tab === 'Logo' ? 'logo' : 'thumb');
+                image.style.display = 'block';
+                q('PreviewSpinner').style.display = 'none';
+            }).catch(function(err) {
+                if (seq !== preview.seq) return;
+                q('PreviewSpinner').style.display = 'none';
+                image.style.display = 'none';
+                error.textContent = err.message || String(err);
+                error.style.display = 'block';
+            });
+        }
+
+        function searchPreviewItems() {
+            var input = q('PreviewSearch'), results = q('PreviewSearchResults'), text = input.value.trim();
+            if (text.length < 2) { results.style.display = 'none'; return; }
+            ApiClient.getItems(ApiClient.getCurrentUserId(), { SearchTerm: text, IncludeItemTypes: 'Movie,Series,Episode', Limit: 10, Recursive: true }).then(function(result) {
+                var items = result.Items || [];
+                results.replaceChildren.apply(results, items.length ? items.map(function(item) {
+                    var name = (item.SeriesName ? item.SeriesName + ' — ' : '') + item.Name + (item.ProductionYear ? ' (' + item.ProductionYear + ')' : '');
+                    return el('div', { class: 'preview-search-item', 'data-item-id': item.Id, 'data-item-type': item.Type, 'data-item-name': name, text: name });
+                }) : [el('div', { class: 'preview-search-item', text: 'No results' })]);
+                results.style.display = 'block';
+            });
+        }
+
+        q('PreviewSearch').addEventListener('input', function() {
+            clearTimeout(preview.searchTimer);
+            preview.searchTimer = setTimeout(searchPreviewItems, 300);
+        });
+        q('PreviewSearchResults').addEventListener('click', function(e) {
+            var row = e.target.closest('[data-item-id]');
+            if (!row) return;
+            preview.item = { Id: row.getAttribute('data-item-id'), Type: row.getAttribute('data-item-type') };
+            q('PreviewSelected').textContent = row.getAttribute('data-item-name');
+            q('PreviewSearchResults').style.display = 'none';
+            q('PreviewSearch').value = '';
+            refreshPreview();
+        });
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.preview-search-wrap')) q('PreviewSearchResults').style.display = 'none';
+        });
+
         // ===== Events =====
         var ZONE_FIELDS = { ZoneArrangement: 'Arrangement', ZoneMarginX: 'MarginXPercent', ZoneMarginY: 'MarginYPercent', ZoneGroupGap: 'GroupGapPercent' };
         var configForm = document.querySelector('#JellyTagConfigForm');
@@ -1146,7 +1251,7 @@
             else if (action === 'profile-delete') deleteProfile();
             else if (action === 'lib-up') moveLibrary(index, -1);
             else if (action === 'lib-down') moveLibrary(index, 1);
-            else if (action === 'tab') { state.tab = target.getAttribute('data-tab'); state.editing = null; renderTabs(); renderImageTab(); }
+            else if (action === 'tab') { state.tab = target.getAttribute('data-tab'); state.editing = null; renderTabs(); renderImageTab(); schedulePreview(); }
             else if (action === 'edit-zone') { state.editing = { kind: 'zone', position: target.getAttribute('data-position') }; renderImageTab(); }
             else if (action === 'edit-panel') {
                 var type = target.getAttribute('data-type');
@@ -1163,7 +1268,7 @@
 
         configForm.addEventListener('change', function(e) {
             var field = e.target, p = currentProfile();
-            if (field.id === 'ProfileSelect') { state.profileId = field.value; state.editing = null; renderAll(); return; }
+            if (field.id === 'ProfileSelect') { state.profileId = field.value; state.editing = null; renderAll(); schedulePreview(); return; }
             if (field.hasAttribute('data-add-position')) { if (field.value) addPanel(field.getAttribute('data-add-position'), field.value); return; }
             if (field.hasAttribute('data-move-to')) { if (field.value) movePanelTo(field.getAttribute('data-move-to'), field.value); return; }
 
@@ -1302,6 +1407,15 @@
             loadBadgeGallery();
             loadCultures();
             loadCacheStats();
+
+            // The preview panel is fixed to the right of the form on wide screens.
+            var panel = document.querySelector('.jellytag-preview-panel');
+            function positionPanel() {
+                if (window.innerWidth <= 1000) { panel.style.left = ''; return; }
+                panel.style.left = (configForm.getBoundingClientRect().right + 16) + 'px';
+            }
+            positionPanel();
+            window.addEventListener('resize', positionPanel);
         });
 
         // ===== Field Validation =====
@@ -1389,7 +1503,7 @@
             xhr.open('POST', ApiClient.getUrl('JellyTag/CustomBadge/' + bk), true);
             var token = ApiClient.accessToken();
             if (token) xhr.setRequestHeader('Authorization', 'MediaBrowser Token="' + token + '"');
-            xhr.onload = function(){Dashboard.hideLoadingMsg();fi.value='';if(xhr.status===204){Dashboard.alert('Badge uploaded.');loadBadgeGallery();}else{Dashboard.alert('Upload failed.');}};
+            xhr.onload = function(){Dashboard.hideLoadingMsg();fi.value='';if(xhr.status===204){Dashboard.alert('Badge uploaded.');loadBadgeGallery();refreshPreview();}else{Dashboard.alert('Upload failed.');}};
             xhr.onerror = function(){Dashboard.hideLoadingMsg();fi.value='';Dashboard.alert('Upload failed.');};
             xhr.send(fd);
         });
