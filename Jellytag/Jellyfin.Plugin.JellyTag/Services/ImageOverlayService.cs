@@ -19,10 +19,10 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
     private bool _badgesLoaded;
     private bool _disposed;
 
-    private const int MinBadgeSizePercent = 5;
-    private const int MaxBadgeSizePercent = 100;
-    private const float MinBadgeMarginPercent = 0f;
-    private const float MaxBadgeMarginPercent = 20f;
+    internal const int MinBadgeSizePercent = 5;
+    internal const int MaxBadgeSizePercent = 100;
+    internal const float MinBadgeMarginPercent = 0f;
+    internal const float MaxBadgeMarginPercent = 20f;
     private const float IconHeightRatio = 0.6f;
 
     private static readonly Dictionary<string, string> BadgeDisplayText = new(StringComparer.OrdinalIgnoreCase)
