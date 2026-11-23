@@ -27,6 +27,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="Configuration\Fixtures\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\Jellytag\Jellyfin.Plugin.JellyTag\Jellyfin.Plugin.JellyTag.csproj" />
   </ItemGroup>
 
