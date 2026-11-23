@@ -20,12 +20,13 @@ internal static class ZoneLayout
         var result = groups.Select(g => new SKPointI[g.Sizes.Count]).ToList();
 
         var position = zone.Position;
-        var right = position is BadgePosition.TopRight or BadgePosition.BottomRight;
-        var center = position is BadgePosition.TopCenter or BadgePosition.BottomCenter;
+        var right = position is BadgePosition.TopRight or BadgePosition.MiddleRight or BadgePosition.BottomRight;
+        var center = position is BadgePosition.TopCenter or BadgePosition.MiddleCenter or BadgePosition.BottomCenter;
         var bottom = position is BadgePosition.BottomLeft or BadgePosition.BottomRight or BadgePosition.BottomCenter;
+        var middle = position is BadgePosition.MiddleLeft or BadgePosition.MiddleCenter or BadgePosition.MiddleRight;
         var rows = zone.Arrangement == ZoneArrangement.Rows;
 
-        // A centered zone has no side to keep a distance from.
+        // A centered zone has no side to keep a distance from, a middle zone no top or bottom.
         var marginX = center ? 0 : PercentOf(imageWidth, ClampMargin(zone.MarginXPercent));
         var marginY = PercentOf(imageWidth, ClampMargin(zone.MarginYPercent));
         var groupGap = PercentOf(imageWidth, Math.Max(0f, zone.GroupGapPercent));
@@ -45,15 +46,15 @@ internal static class ZoneLayout
             return result.Select(r => r.ToList()).ToList();
         }
 
-        // Columns of a centered zone are centered as one block.
-        var blockWidth = lines.Sum(l => l.Thickness) + (lines.Count - 1) * groupGap;
+        // Lines of a centered zone (columns) or of a middle zone (rows) are centered as one block.
+        var block = lines.Sum(l => l.Thickness) + (lines.Count - 1) * groupGap;
         var crossOffset = 0;
         foreach (var line in lines)
         {
             if (rows)
             {
-                var lineY = bottom
-                    ? imageHeight - marginY - crossOffset - line.Thickness
+                var lineY = bottom ? imageHeight - marginY - crossOffset - line.Thickness
+                    : middle ? (imageHeight - block) / 2 + crossOffset
                     : marginY + crossOffset;
                 var startX = right ? imageWidth - marginX - line.Length
                     : center ? (imageWidth - line.Length) / 2
@@ -67,9 +68,11 @@ internal static class ZoneLayout
             else
             {
                 var columnX = right ? imageWidth - marginX - crossOffset - line.Thickness
-                    : center ? (imageWidth - blockWidth) / 2 + crossOffset
+                    : center ? (imageWidth - block) / 2 + crossOffset
                     : marginX + crossOffset;
-                var startY = bottom ? imageHeight - marginY - line.Length : marginY;
+                var startY = bottom ? imageHeight - marginY - line.Length
+                    : middle ? (imageHeight - line.Length) / 2
+                    : marginY;
                 foreach (var slot in line.Slots)
                 {
                     // Each badge is aligned on the zone's side of its column.

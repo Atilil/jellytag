@@ -111,6 +111,38 @@ public class ZoneLayoutTests
         Assert.Equal(new SKPointI(130, 30), layout[0][1]);
     }
 
+    // Two 50 px lines and a 10 px gap: a 110 px block, centered on the 1500 px height.
+    [Fact]
+    public void Rows_MiddleLeft_CenterTheLinesAsOneBlock()
+    {
+        var layout = Layout(Zone(BadgePosition.MiddleLeft, ZoneArrangement.Rows), Group(0, Badge), Group(1, Badge));
+
+        Assert.Equal(new SKPointI(20, 695), layout[0][0]);
+        Assert.Equal(new SKPointI(20, 755), layout[1][0]);
+    }
+
+    // A middle column reads from the top, like a top one: no reversed order.
+    [Fact]
+    public void Columns_MiddleRight_CenterEachColumnOnItsHeight()
+    {
+        var layout = Layout(Zone(BadgePosition.MiddleRight, ZoneArrangement.Columns), Group(0, Badge, Badge), Group(1, Badge));
+
+        Assert.Equal(new[] { new SKPointI(880, 695), new SKPointI(880, 755) }, layout[0]);
+        Assert.Equal(new SKPointI(770, 725), layout[1][0]);
+    }
+
+    [Fact]
+    public void MiddleCenter_IgnoresBothMargins()
+    {
+        var zone = Zone(BadgePosition.MiddleCenter, ZoneArrangement.Rows);
+        zone.MarginXPercent = 5;
+        zone.MarginYPercent = 5;
+
+        var layout = Layout(zone, Group(0, Badge));
+
+        Assert.Equal(new SKPointI(450, 725), layout[0][0]);
+    }
+
     [Fact]
     public void PanelsWithoutBadges_TakeNoSpace()
     {

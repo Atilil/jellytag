@@ -14,7 +14,10 @@ public enum BadgePosition
 
     // Appended: the cache fingerprint stores positions as numbers.
     TopCenter,
-    BottomCenter
+    BottomCenter,
+    MiddleLeft,
+    MiddleCenter,
+    MiddleRight
 }
 
 /// <summary>

@@ -374,7 +374,7 @@
         var PANEL_TYPE_LABELS = {Resolution:'Resolution', Hdr:'HDR / 3D', Codec:'Codec', Audio:'Audio', Language:'Language', Subtitle:'Subtitles', Runtime:'Video length', Rating:'Rating', Library:'Library'};
         // Short names of the same width, so that a column of chips stays straight.
         var CHIP_LABELS = {Resolution:'Res.', Hdr:'HDR', Codec:'Codec', Audio:'Audio', Language:'Lang', Subtitle:'Subs.', Runtime:'Length', Rating:'Rating', Library:'Libs.'};
-        var POSITION_LABELS = {TopLeft:'Top left', TopCenter:'Top center', TopRight:'Top right', BottomLeft:'Bottom left', BottomCenter:'Bottom center', BottomRight:'Bottom right'};
+        var POSITION_LABELS = {TopLeft:'Top left', TopCenter:'Top center', TopRight:'Top right', MiddleLeft:'Middle left', MiddleCenter:'Middle center', MiddleRight:'Middle right', BottomLeft:'Bottom left', BottomCenter:'Bottom center', BottomRight:'Bottom right'};
 
         // editing: the zone ({kind: 'zone', position}) or panel ({kind: 'panel', type}) open under the grid.
         var state = { config: null, libraries: [], defaults: null, profileId: DEFAULT_PROFILE_ID, tab: 'Primary', editing: null, dirty: false };
@@ -593,13 +593,14 @@
         // ===== Placement =====
         // A zone is drawn as a cell of a 3x2 grid shaped like the image; its panels are chips, one
         // group per line. Under the grid, an editor for the selected zone or panel.
-        var POSITIONS = ['TopLeft', 'TopCenter', 'TopRight', 'BottomLeft', 'BottomCenter', 'BottomRight'];
+        var POSITIONS = ['TopLeft', 'TopCenter', 'TopRight', 'MiddleLeft', 'MiddleCenter', 'MiddleRight', 'BottomLeft', 'BottomCenter', 'BottomRight'];
         var PANEL_TYPES = Object.keys(PANEL_TYPE_LABELS);
 
         function currentImage() { return imageOf(currentProfile(), state.tab); }
         function tabDefaults() { return state.defaults[state.tab]; }
         function zoneAt(img, position) { return img.Zones.filter(function(z) { return z.Position === position; })[0]; }
-        function isCentered(position) { return position === 'TopCenter' || position === 'BottomCenter'; }
+        function isCentered(position) { return /Center$/.test(position); }
+        function isMiddle(position) { return position.indexOf('Middle') === 0; }
 
         function locate(img, type) {
             for (var zi = 0; zi < img.Zones.length; zi++) {
@@ -738,7 +739,7 @@
         // The way badges go from the edge of the zone, as the renderer places them.
         function directionArrow(zone) {
             var p = zone.Position;
-            if (zone.Arrangement !== 'Rows') return p.indexOf('Bottom') === 0 ? '\u2191' : '\u2193';
+            if (zone.Arrangement !== 'Rows') return p.indexOf('Bottom') === 0 ? '\u2191' : isMiddle(p) ? '\u2195' : '\u2193';
             if (isCentered(p)) return '\u2194';
             return p.indexOf('Right') > 0 ? '\u2190' : '\u2192';
         }
@@ -784,7 +785,8 @@
                     el('div', { class: 'jellytag-row three' }, [
                         isCentered(zone.Position) ? el('div', { class: 'fieldDescription', text: 'A centered zone has no side margin.' })
                             : numberField('ZoneMarginX', 'Side margin (% image width)', 0, 20, 0.5, zone.MarginXPercent),
-                        numberField('ZoneMarginY', 'Top/bottom margin (% image width)', 0, 20, 0.5, zone.MarginYPercent),
+                        isMiddle(zone.Position) ? el('div', { class: 'fieldDescription', text: 'A middle zone has no top or bottom margin.' })
+                            : numberField('ZoneMarginY', 'Top/bottom margin (% image width)', 0, 20, 0.5, zone.MarginYPercent),
                         numberField('ZoneGroupGap', 'Gap between panels (% image width)', 0, 20, 0.25, zone.GroupGapPercent)
                     ])
                 ]);
