@@ -26,6 +26,8 @@
             .panel-arrows button:hover { background: rgba(0,164,220,.6); }
             .panel-arrows button:disabled { opacity: .3; cursor: default; }
             .hidden { display: none !important; }
+            .jellytag-invalid { outline: 2px solid #e57373 !important; outline-offset: -2px; }
+            .jellytag-field-error { color: #e57373; font-size: .85em; margin-top: .3em; }
             .jellytag-text-box { padding: .6em; border: 1px solid rgba(255,255,255,.08); border-radius: .3em; margin-top: .5em; }
             .jellytag-rgba { display: flex; gap: .5em; align-items: center; }
             .jellytag-rgba input[type="number"] { width: 80px; }
@@ -169,6 +171,7 @@
                     </details>
 
                     <div class="verticalSection" style="margin-top:1em;">
+                        <div id="SaveError" class="jellytag-field-error hidden" style="margin-bottom:.5em;"></div>
                         <button is="emby-button" type="submit" class="raised button-submit block" style="width:100%;"><span>Save</span></button>
                         <button id="ClearCache" type="button" is="emby-button" class="raised button-warning block" style="width:100%; margin-top:.5em;"><span>Clear Image Cache</span></button>
                         <button id="ExportConfig" type="button" is="emby-button" class="raised block" style="width:100%; margin-top:.5em;"><span>Export Config</span></button>
@@ -1244,6 +1247,7 @@
         // ===== Form Submit =====
         document.querySelector('#JellyTagConfigForm').addEventListener('submit', function(e) {
             e.preventDefault();
+            saveError.classList.add('hidden');
             Dashboard.showLoadingMsg();
             ApiClient.getPluginConfiguration(JellyTagConfig.pluginUniqueId).then(function(config) {
                 collectConfigFromForm(config);
@@ -1253,6 +1257,75 @@
             });
             return false;
         });
+
+        // ===== Field Validation =====
+        // Own English hints instead of the browser's validationMessage, which follows the
+        // browser language rather than the page's.
+        function constraintHint(field) {
+            if (field.validity.badInput) return 'Enter a number';
+            var parts = [];
+            if (field.min !== '' && field.max !== '') parts.push(field.min + '–' + field.max);
+            if (field.step === '1') parts.push('whole number');
+            else if (field.step && field.step !== 'any') parts.push('step ' + field.step);
+            return parts.join(', ') || 'Invalid value';
+        }
+        function markField(field) {
+            var err = document.getElementById(field.id + 'Error');
+            if (field.validity.valid) {
+                field.classList.remove('jellytag-invalid');
+                if (err) err.remove();
+                return;
+            }
+            field.classList.add('jellytag-invalid');
+            if (!err) {
+                err = document.createElement('div');
+                err.id = field.id + 'Error';
+                err.className = 'jellytag-field-error';
+                field.insertAdjacentElement('afterend', err);
+            }
+            err.textContent = constraintHint(field);
+        }
+        function fieldPath(field) {
+            var section = field.closest('.jellytag-section');
+            var panel = field.closest('details[data-panel-id]');
+            var label = document.querySelector('label[for="' + field.id + '"]');
+            return [section && section.querySelector('summary').textContent,
+                panel && panel.querySelector('summary').firstChild.textContent,
+                label ? label.textContent : field.id].filter(Boolean).join(' › ');
+        }
+        var configForm = document.querySelector('#JellyTagConfigForm');
+        var saveError = document.querySelector('#SaveError');
+        configForm.addEventListener('input', function(e) {
+            if (e.target.type !== 'number') return;
+            markField(e.target);
+            if (!configForm.querySelector('.jellytag-invalid')) saveError.classList.add('hidden');
+        });
+
+        // The browser fires 'invalid' once per bad field, then cancels the submit; its own bubble
+        // only works on a visible field, so inside a collapsed section Save did nothing (#27).
+        // 'invalid' does not bubble: listen in the capture phase.
+        var invalidBurst = null;
+        configForm.addEventListener('invalid', function(e) {
+            e.preventDefault();
+            var field = e.target;
+            markField(field);
+            for (var d = field.closest('details'); d; d = d.parentElement.closest('details')) d.open = true;
+            if (!invalidBurst) {
+                invalidBurst = { first: null, hidden: [] };
+                setTimeout(reportInvalidBurst, 0);
+            }
+            if (!field.offsetParent) invalidBurst.hidden.push(fieldPath(field));
+            else if (!invalidBurst.first) invalidBurst.first = field;
+        }, true);
+        function reportInvalidBurst() {
+            var burst = invalidBurst;
+            invalidBurst = null;
+            if (burst.first) { burst.first.scrollIntoView({ block: 'center' }); burst.first.focus(); }
+            var msg = 'Not saved: fix the settings highlighted in red.';
+            if (burst.hidden.length) msg += ' Out of range but hidden by another option: ' + burst.hidden.join('; ') + '.';
+            saveError.textContent = msg;
+            saveError.classList.remove('hidden');
+        }
 
         // ===== Other Handlers =====
         document.querySelector('#ClearCache').addEventListener('click', function() {
