@@ -203,6 +203,18 @@ public class PluginConfiguration : BasePluginConfiguration
         WebPQuality = 90;
     }
 
+    /// <summary>
+    /// Format of the saved settings. 0 is every format before 4.0, where the placement lived in each panel.
+    /// </summary>
+    public const int CurrentConfigVersion = 1;
+
+    public int ConfigVersion { get; set; }
+
+    // Left empty by the constructor: XmlSerializer adds the saved items to the list it finds,
+    // so a list filled here would get duplicates at every load.
+    public List<BadgeProfile> Profiles { get; set; } = new();
+    public List<LibraryAssignment> LibraryAssignments { get; set; } = new();
+
     public bool Enabled { get; set; }
 
     public ImageTypeConfig PosterConfig { get; set; }
@@ -259,6 +271,26 @@ public class PluginConfiguration : BasePluginConfiguration
     public bool? ShowChannelBadge { get; set; }
     public LanguageBadgeMode? LanguageBadgeMode { get; set; }
     public bool? ShowSubtitleIndicator { get; set; }
+
+    /// <summary>
+    /// Brings settings of any earlier format to <see cref="CurrentConfigVersion"/>, then repairs them.
+    /// </summary>
+    /// <returns>True when the format changed, so the caller saves the result.</returns>
+    public bool Upgrade()
+    {
+        var upgraded = false;
+        if (ConfigVersion < 1)
+        {
+            MigrateFromLegacy();
+            EnsureSubtitlePanels();
+            (Profiles, LibraryAssignments) = ConfigMigration.FromV3(this);
+            ConfigVersion = 1;
+            upgraded = true;
+        }
+
+        ConfigNormalizer.Normalize(Profiles, LibraryAssignments);
+        return upgraded;
+    }
 
     /// <summary>
     /// Gives configurations saved before 3.2.0 a subtitle panel that looks like their VOST

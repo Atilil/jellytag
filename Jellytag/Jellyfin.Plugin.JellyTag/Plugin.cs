@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text.Json;
 using Jellyfin.Plugin.JellyTag.Configuration;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Plugins;
@@ -37,10 +38,7 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
         BadgeFolderPath = Path.Combine(applicationPaths.DataPath, "jellytag");
 
         MoveOutOfPluginsFolder(applicationPaths.PluginsPath);
-
-        // Run legacy migration once at startup
-        Configuration.MigrateFromLegacy();
-        Configuration.EnsureSubtitlePanels();
+        UpgradeSavedConfiguration();
     }
 
     /// <inheritdoc />
@@ -61,6 +59,62 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     /// Gets the folder holding persistent plugin data (custom badges), under Jellyfin's data directory.
     /// </summary>
     public string BadgeFolderPath { get; }
+
+    /// <summary>
+    /// Gets the file holding the settings as they were before the 4.0 format, written once before
+    /// they are converted. It can be imported back into JellyTag 3.x after a downgrade.
+    /// </summary>
+    public string BackupFilePath => Path.Combine(BadgeFolderPath, "config-3.x-backup.json");
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// Every write goes through here: the configuration page, the import and the reset. All of them
+    /// can bring settings of an earlier format, which are converted before they are saved.
+    /// </remarks>
+    public override void UpdateConfiguration(BasePluginConfiguration configuration)
+    {
+        ((PluginConfiguration)configuration).Upgrade();
+        base.UpdateConfiguration(configuration);
+    }
+
+    private void UpgradeSavedConfiguration()
+    {
+        var config = Configuration;
+        if (config.ConfigVersion < PluginConfiguration.CurrentConfigVersion)
+        {
+            BackUpConfiguration(config);
+        }
+
+        if (config.Upgrade())
+        {
+            SaveConfiguration();
+            _logger.LogInformation(
+                "Converted the JellyTag settings to format {Version}; the previous settings are in {Backup}",
+                PluginConfiguration.CurrentConfigVersion,
+                BackupFilePath);
+        }
+    }
+
+    private void BackUpConfiguration(PluginConfiguration config)
+    {
+        try
+        {
+            // An existing backup holds the oldest settings: a second conversion must not replace it.
+            if (File.Exists(BackupFilePath))
+            {
+                return;
+            }
+
+            Directory.CreateDirectory(BadgeFolderPath);
+
+            // Same format as the export of the configuration page, so that the import reads it.
+            File.WriteAllBytes(BackupFilePath, JsonSerializer.SerializeToUtf8Bytes(config, new JsonSerializerOptions { WriteIndented = true }));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to back up the JellyTag settings to {Path}", BackupFilePath);
+        }
+    }
 
     /// <inheritdoc />
     public IEnumerable<PluginPageInfo> GetPages()
