@@ -82,12 +82,38 @@
             .jellytag-arrows button { background: rgba(255,255,255,.15); border: none; color: #fff; width: 26px; height: 26px; border-radius: .2em; cursor: pointer; font-size: .85em; padding: 0; }
             .jellytag-arrows button:hover { background: rgba(0,164,220,.6); }
             .jellytag-arrows button:disabled { opacity: .3; cursor: default; }
-            .jellytag-zone-summary { margin: .3em 0; }
-            .jellytag-zone-summary b { display: inline-block; min-width: 9em; }
             .jellytag-savebar { position: sticky; bottom: 0; z-index: 40; display: flex; align-items: center; gap: 1em; margin-top: 1em; padding: .6em 1em; background: rgba(20,20,20,.97); border-top: 1px solid rgba(255,255,255,.12); }
             .jellytag-savebar #DirtyState { flex: 1; color: #aaa; }
             .jellytag-savebar.dirty #DirtyState { color: #ffb74d; }
             .jellytag-savebar button { margin: 0; }
+            .jellytag-zone-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5em; margin: 1em 0; }
+            .zone-cell { display: flex; flex-direction: column; gap: .4em; min-height: 6em; padding: .5em; border: 1px solid rgba(255,255,255,.15); border-radius: .3em; }
+            .zone-cell.empty { border-color: transparent; }
+            .jellytag-zone-grid.dragging .zone-cell { background: rgba(255,255,255,.03); }
+            .jellytag-zone-grid.dragging .zone-cell.empty { border: 1px dashed rgba(255,255,255,.3); }
+            .zone-direction { margin-left: .4em; }
+            .zone-newline { display: none; padding: .15em; border: 1px dashed rgba(255,255,255,.3); border-radius: 1em; color: #aaa; font-size: .75em; text-align: center; }
+            .jellytag-zone-grid.dragging .zone-newline { display: block; }
+            .zone-newline.over { background: rgba(0,164,220,.25); border-color: #00a4dc; color: #fff; }
+            .zone-head { display: flex; justify-content: space-between; align-items: center; font-size: .85em; color: #aaa; }
+            .zone-gear { background: none; border: none; color: inherit; cursor: pointer; font-size: 1.2em; padding: 0 .2em; }
+            .zone-gear.active, .zone-gear:hover { color: #00a4dc; }
+            .zone-lines { display: flex; gap: .3em; }
+            .zone-lines.rows { flex-direction: column; }
+            .zone-lines.columns { flex-direction: row; align-items: flex-start; }
+            .zone-line { display: flex; flex-wrap: wrap; gap: .3em; }
+            .zone-lines.columns .zone-line { flex-direction: column; }
+            .panel-chip { min-width: 4.2em; box-sizing: border-box; background: rgba(0,164,220,.25); border: 1px solid transparent; border-radius: 1em; cursor: grab; font-size: .85em; padding: .2em .7em; text-align: center; user-select: none; }
+            .panel-chip.dragged { opacity: .4; }
+            .panel-chip.insert-before { box-shadow: -3px 0 0 #00a4dc; }
+            .panel-chip.insert-after { box-shadow: 3px 0 0 #00a4dc; }
+            .zone-lines.columns .panel-chip.insert-before { box-shadow: 0 -3px 0 #00a4dc; }
+            .zone-lines.columns .panel-chip.insert-after { box-shadow: 0 3px 0 #00a4dc; }
+            .panel-chip.selected { background: rgba(0,164,220,.55); border-color: #00a4dc; }
+            .zone-add { margin-top: auto; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.15); border-radius: .3em; color: inherit; font-size: .85em; padding: .25em; }
+            .zone-add option { background: #1c1c1e; }
+            .jellytag-editor { border: 1px solid rgba(255,255,255,.12); border-radius: .4em; padding: .8em 1em; }
+            .jellytag-editor h4 { margin: 0 0 .6em; }
         </style>
         <div data-role="content">
             <div class="content-primary">
@@ -346,9 +372,12 @@
         var DEFAULT_PROFILE_ID = 'daeb47a3cbe444559dd2aa166fd7fcb1';
         var IMAGE_TYPES = [{v:'Primary',l:'Poster'},{v:'Thumb',l:'Thumbnail'},{v:'Backdrop',l:'Backdrop'},{v:'Logo',l:'Logo'}];
         var PANEL_TYPE_LABELS = {Resolution:'Resolution', Hdr:'HDR / 3D', Codec:'Codec', Audio:'Audio', Language:'Language', Subtitle:'Subtitles', Runtime:'Video length', Rating:'Rating', Library:'Library'};
+        // Short names of the same width, so that a column of chips stays straight.
+        var CHIP_LABELS = {Resolution:'Res.', Hdr:'HDR', Codec:'Codec', Audio:'Audio', Language:'Lang', Subtitle:'Subs.', Runtime:'Length', Rating:'Rating', Library:'Libs.'};
         var POSITION_LABELS = {TopLeft:'Top left', TopCenter:'Top center', TopRight:'Top right', BottomLeft:'Bottom left', BottomCenter:'Bottom center', BottomRight:'Bottom right'};
 
-        var state = { config: null, libraries: [], defaults: null, profileId: DEFAULT_PROFILE_ID, tab: 'Primary', dirty: false };
+        // editing: the zone ({kind: 'zone', position}) or panel ({kind: 'panel', type}) open under the grid.
+        var state = { config: null, libraries: [], defaults: null, profileId: DEFAULT_PROFILE_ID, tab: 'Primary', editing: null, dirty: false };
 
         function q(id) { return document.querySelector('#' + id); }
         function authHeaders() { var t = ApiClient.accessToken(); return t ? {'Authorization': 'MediaBrowser Token="' + t + '"'} : {}; }
@@ -558,24 +587,239 @@
                 ]),
                 img.SameAs
                     ? el('div', { class: 'fieldDescription', text: 'Uses the ' + typeLabel(img.SameAs) + ' settings.' })
-                    : el('div', { id: 'ZoneGrid' }, placementSummary(img)));
+                    : el('div', { id: 'ZoneGrid' }, [renderGrid(img), renderEditor(img)]));
         }
 
-        // Read-only list of the zones until the placement editor exists.
-        function placementSummary(img) {
-            if (!img.Zones.length) return [el('div', { class: 'fieldDescription', text: 'No badges placed.' })];
-            return img.Zones.map(function(z) {
-                var lines = z.Lines.map(function(l) {
-                    return l.Panels.map(function(p) { return PANEL_TYPE_LABELS[p.Type] || p.Type; }).join(', ');
-                });
-                return el('div', { class: 'jellytag-zone-summary' }, [
-                    el('b', { text: POSITION_LABELS[z.Position] }),
-                    (z.Arrangement === 'Rows' ? 'rows: ' : 'columns: ') + lines.join(' | ')
+        // ===== Placement =====
+        // A zone is drawn as a cell of a 3x2 grid shaped like the image; its panels are chips, one
+        // group per line. Under the grid, an editor for the selected zone or panel.
+        var POSITIONS = ['TopLeft', 'TopCenter', 'TopRight', 'BottomLeft', 'BottomCenter', 'BottomRight'];
+        var PANEL_TYPES = Object.keys(PANEL_TYPE_LABELS);
+
+        function currentImage() { return imageOf(currentProfile(), state.tab); }
+        function tabDefaults() { return state.defaults[state.tab]; }
+        function zoneAt(img, position) { return img.Zones.filter(function(z) { return z.Position === position; })[0]; }
+        function isCentered(position) { return position === 'TopCenter' || position === 'BottomCenter'; }
+
+        function locate(img, type) {
+            for (var zi = 0; zi < img.Zones.length; zi++) {
+                var zone = img.Zones[zi];
+                for (var li = 0; li < zone.Lines.length; li++) {
+                    var panels = zone.Lines[li].Panels;
+                    for (var pi = 0; pi < panels.length; pi++) {
+                        if (panels[pi].Type === type) return { zone: zone, line: zone.Lines[li], lineIndex: li, index: pi };
+                    }
+                }
+            }
+            return null;
+        }
+
+        // Empty lines and empty zones are not kept (Q21).
+        function prune(img) {
+            img.Zones.forEach(function(z) { z.Lines = z.Lines.filter(function(l) { return l.Panels.length > 0; }); });
+            img.Zones = img.Zones.filter(function(z) { return z.Lines.length > 0; });
+        }
+
+        function zoneFor(img, position) {
+            var zone = zoneAt(img, position);
+            if (!zone) {
+                zone = clone(tabDefaults().Zone);
+                zone.Position = position;
+                zone.Lines = [];
+                img.Zones.push(zone);
+            }
+            return zone;
+        }
+
+        // Settings that differ from the defaults of a new panel or zone: only then is a removal confirmed.
+        function panelModified(panel) { return JSON.stringify(panel) !== JSON.stringify(tabDefaults().Panels[panel.Type]); }
+        function zoneModified(zone) {
+            var d = tabDefaults().Zone;
+            return zone.Arrangement !== d.Arrangement || zone.MarginXPercent !== d.MarginXPercent
+                || zone.MarginYPercent !== d.MarginYPercent || zone.GroupGapPercent !== d.GroupGapPercent;
+        }
+        function confirmLoss(at, action) {
+            var label = PANEL_TYPE_LABELS[at.line.Panels[at.index].Type];
+            var lastInZone = at.zone.Lines.length === 1 && at.line.Panels.length === 1;
+            var lostPanel = action === 'remove' && panelModified(at.line.Panels[at.index]);
+            var lostZone = lastInZone && zoneModified(at.zone);
+            if (!lostPanel && !lostZone) return true;
+            var msg = action === 'remove' ? 'Remove the ' + label + ' panel?' : 'Move the ' + label + ' panel?';
+            if (lostPanel) msg += ' Its settings will be lost.';
+            if (lostZone) msg += ' The ' + POSITION_LABELS[at.zone.Position].toLowerCase() + ' zone is then empty: its settings will be lost.';
+            return confirm(msg);
+        }
+
+        function addPanel(position, type) {
+            var img = currentImage();
+            if (locate(img, type)) return;
+            zoneFor(img, position).Lines.push({ Panels: [clone(tabDefaults().Panels[type])] });
+            state.editing = { kind: 'panel', type: type };
+            markDirty();
+            renderImageTab();
+        }
+
+        function removePanel(type) {
+            var img = currentImage(), at = locate(img, type);
+            if (!at || !confirmLoss(at, 'remove')) return;
+            at.line.Panels.splice(at.index, 1);
+            prune(img);
+            state.editing = null;
+            markDirty();
+            renderImageTab();
+        }
+
+        function movePanelTo(type, position) {
+            var img = currentImage(), at = locate(img, type);
+            if (!at || at.zone.Position === position || !confirmLoss(at, 'move')) return;
+            var panel = at.line.Panels.splice(at.index, 1)[0];
+            prune(img);
+            zoneFor(img, position).Lines.push({ Panels: [panel] });
+            markDirty();
+            renderImageTab();
+        }
+
+        // Within its line: earlier or later.
+        function canMoveInLine(at, delta) { var j = at.index + delta; return j >= 0 && j < at.line.Panels.length; }
+        function moveInLine(type, delta) {
+            var at = locate(currentImage(), type);
+            if (!at || !canMoveInLine(at, delta)) return;
+            var panels = at.line.Panels;
+            var panel = panels.splice(at.index, 1)[0];
+            panels.splice(at.index + delta, 0, panel);
+            markDirty();
+            renderImageTab();
+        }
+
+        // Across lines: a panel that shares its line leaves it for a new line on that side; a panel
+        // alone on its line joins the neighbouring line.
+        function canMoveAcross(at, delta) {
+            return at.line.Panels.length > 1 || (at.lineIndex + delta >= 0 && at.lineIndex + delta < at.zone.Lines.length);
+        }
+        function moveAcross(type, delta) {
+            var img = currentImage(), at = locate(img, type);
+            if (!at || !canMoveAcross(at, delta)) return;
+            var lines = at.zone.Lines;
+            var panel = at.line.Panels.splice(at.index, 1)[0];
+            if (at.line.Panels.length > 0) {
+                lines.splice(at.lineIndex + (delta < 0 ? 0 : 1), 0, { Panels: [panel] });
+            } else {
+                var target = lines[at.lineIndex + delta];
+                if (delta < 0) target.Panels.push(panel); else target.Panels.unshift(panel);
+            }
+            prune(img);
+            markDirty();
+            renderImageTab();
+        }
+
+        // Drag and drop: onto a chip, the panel joins that line before or after it; onto the "New line"
+        // strip of a zone, it starts a line at the end of that zone.
+        function dropPanel(type, target) {
+            var img = currentImage(), at = locate(img, type);
+            if (!at || target.anchor === type) return;
+            var position = target.anchor ? locate(img, target.anchor).zone.Position : target.position;
+            var leaving = position !== at.zone.Position;
+            // The only panel of a zone dropped on that zone: nothing to move.
+            if (!leaving && at.zone.Lines.length === 1 && at.line.Panels.length === 1) return;
+            if (leaving && !confirmLoss(at, 'move')) return;
+            var panel = at.line.Panels.splice(at.index, 1)[0];
+            if (target.anchor) {
+                var anchor = locate(img, target.anchor);
+                anchor.line.Panels.splice(anchor.index + (target.after ? 1 : 0), 0, panel);
+            } else {
+                zoneFor(img, position).Lines.push({ Panels: [panel] });
+            }
+            prune(img);
+            state.editing = { kind: 'panel', type: type };
+            markDirty();
+            renderImageTab();
+        }
+
+        // The way badges go from the edge of the zone, as the renderer places them.
+        function directionArrow(zone) {
+            var p = zone.Position;
+            if (zone.Arrangement !== 'Rows') return p.indexOf('Bottom') === 0 ? '\u2191' : '\u2193';
+            if (isCentered(p)) return '\u2194';
+            return p.indexOf('Right') > 0 ? '\u2190' : '\u2192';
+        }
+
+        function renderGrid(img) {
+            var editing = state.editing || {};
+            return el('div', { class: 'jellytag-zone-grid' }, POSITIONS.map(function(position) {
+                var zone = zoneAt(img, position);
+                var head = el('div', { class: 'zone-head' }, [
+                    el('span', {}, [POSITION_LABELS[position], zone ? el('span', { class: 'zone-direction', title: zone.Arrangement === 'Rows' ? 'Horizontal' : 'Vertical', text: directionArrow(zone) }) : null]),
+                    zone ? el('button', { type: 'button', class: 'zone-gear' + (editing.kind === 'zone' && editing.position === position ? ' active' : ''),
+                        title: 'Zone settings', 'data-action': 'edit-zone', 'data-position': position, text: '⚙' }) : null
                 ]);
-            });
+                var lines = zone ? el('div', { class: 'zone-lines ' + (zone.Arrangement === 'Rows' ? 'rows' : 'columns') }, zone.Lines.map(function(line) {
+                    return el('div', { class: 'zone-line' }, line.Panels.map(function(p) {
+                        var selected = editing.kind === 'panel' && editing.type === p.Type;
+                        // A div: Firefox does not start a drag from a button.
+                        return el('div', { class: 'panel-chip' + (selected ? ' selected' : ''), role: 'button', tabindex: 0, draggable: 'true',
+                            title: PANEL_TYPE_LABELS[p.Type], 'data-action': 'edit-panel', 'data-type': p.Type, text: CHIP_LABELS[p.Type] || p.Type });
+                    }));
+                })) : null;
+                var missing = PANEL_TYPES.filter(function(t) { return !locate(img, t); });
+                var add = missing.length ? el('select', { class: 'zone-add', 'data-add-position': position, title: 'Add a panel' },
+                    [el('option', { value: '', text: '+ Add panel' })].concat(missing.map(function(t) { return el('option', { value: t, text: PANEL_TYPE_LABELS[t] }); }))) : null;
+                var newLine = el('div', { class: 'zone-newline', 'data-drop-position': position, text: 'New line' });
+                return el('div', { class: 'zone-cell' + (zone ? '' : ' empty') }, [head, lines, newLine, add]);
+            }));
+        }
+
+        function renderEditor(img) {
+            var editing = state.editing;
+            if (!editing) return el('div', { class: 'fieldDescription', text: 'Select a panel or a zone settings button to edit it.' });
+
+            if (editing.kind === 'zone') {
+                var zone = zoneAt(img, editing.position);
+                if (!zone) return null;
+                return el('div', { class: 'jellytag-editor' }, [
+                    el('h4', { text: POSITION_LABELS[zone.Position] + ' zone' }),
+                    selectField('ZoneArrangement', 'Badge direction', [
+                        { v: 'Rows', l: 'Horizontal: badges side by side, lines stacked', selected: zone.Arrangement === 'Rows' },
+                        { v: 'Columns', l: 'Vertical: badges one under the other, lines side by side', selected: zone.Arrangement !== 'Rows' }
+                    ]),
+                    el('div', { class: 'jellytag-row three' }, [
+                        isCentered(zone.Position) ? el('div', { class: 'fieldDescription', text: 'A centered zone has no side margin.' })
+                            : numberField('ZoneMarginX', 'Side margin (% image width)', 0, 20, 0.5, zone.MarginXPercent),
+                        numberField('ZoneMarginY', 'Top/bottom margin (% image width)', 0, 20, 0.5, zone.MarginYPercent),
+                        numberField('ZoneGroupGap', 'Gap between panels (% image width)', 0, 20, 0.25, zone.GroupGapPercent)
+                    ])
+                ]);
+            }
+
+            var at = locate(img, editing.type);
+            if (!at) return null;
+            var rows = at.zone.Arrangement === 'Rows';
+            // Arrows follow the screen: in rows, left/right stay in the line; in columns, up/down do.
+            var horizontal = rows ? 'move-inline' : 'move-across', vertical = rows ? 'move-across' : 'move-inline';
+            function arrow(text, title, action, delta) {
+                var enabled = action === 'move-inline' ? canMoveInLine(at, delta) : canMoveAcross(at, delta);
+                return el('button', { type: 'button', title: title, 'data-action': action, 'data-delta': delta, 'data-type': editing.type, disabled: !enabled, text: text });
+            }
+            var moveOptions = [{ v: '', l: 'Move to…' }].concat(POSITIONS.filter(function(p) { return p !== at.zone.Position; })
+                .map(function(p) { return { v: p, l: POSITION_LABELS[p] }; }));
+            return el('div', { class: 'jellytag-editor' }, [
+                el('h4', { text: PANEL_TYPE_LABELS[editing.type] + ' — ' + POSITION_LABELS[at.zone.Position] + ', ' + (rows ? 'row ' : 'column ') + (at.lineIndex + 1) }),
+                el('div', { class: 'jellytag-toolbar' }, [
+                    el('span', { class: 'jellytag-arrows' }, [
+                        arrow('◀', 'Move left', horizontal, -1),
+                        arrow('▶', 'Move right', horizontal, 1),
+                        arrow('▲', 'Move up', vertical, -1),
+                        arrow('▼', 'Move down', vertical, 1)
+                    ]),
+                    el('select', { class: 'zone-add', 'data-move-to': editing.type, title: 'Move to another zone' },
+                        moveOptions.map(function(o) { return el('option', { value: o.v, text: o.l }); })),
+                    actionButton('Remove', 'remove-panel', { 'data-type': editing.type })
+                ]),
+                el('div', { id: 'PanelSettings' })
+            ]);
         }
 
         // ===== Events =====
+        var ZONE_FIELDS = { ZoneArrangement: 'Arrangement', ZoneMarginX: 'MarginXPercent', ZoneMarginY: 'MarginYPercent', ZoneGroupGap: 'GroupGapPercent' };
         var configForm = document.querySelector('#JellyTagConfigForm');
         var saveError = document.querySelector('#SaveError');
 
@@ -589,12 +833,19 @@
             else if (action === 'profile-delete') deleteProfile();
             else if (action === 'lib-up') moveLibrary(index, -1);
             else if (action === 'lib-down') moveLibrary(index, 1);
-            else if (action === 'tab') { state.tab = target.getAttribute('data-tab'); renderTabs(); renderImageTab(); }
+            else if (action === 'tab') { state.tab = target.getAttribute('data-tab'); state.editing = null; renderTabs(); renderImageTab(); }
+            else if (action === 'edit-zone') { state.editing = { kind: 'zone', position: target.getAttribute('data-position') }; renderImageTab(); }
+            else if (action === 'edit-panel') { state.editing = { kind: 'panel', type: target.getAttribute('data-type') }; renderImageTab(); }
+            else if (action === 'move-inline') moveInLine(target.getAttribute('data-type'), parseInt(target.getAttribute('data-delta'), 10));
+            else if (action === 'move-across') moveAcross(target.getAttribute('data-type'), parseInt(target.getAttribute('data-delta'), 10));
+            else if (action === 'remove-panel') removePanel(target.getAttribute('data-type'));
         });
 
         configForm.addEventListener('change', function(e) {
             var field = e.target, p = currentProfile();
-            if (field.id === 'ProfileSelect') { state.profileId = field.value; renderAll(); return; }
+            if (field.id === 'ProfileSelect') { state.profileId = field.value; state.editing = null; renderAll(); return; }
+            if (field.hasAttribute('data-add-position')) { if (field.value) addPanel(field.getAttribute('data-add-position'), field.value); return; }
+            if (field.hasAttribute('data-move-to')) { if (field.value) movePanelTo(field.getAttribute('data-move-to'), field.value); return; }
 
             // An out-of-range number stays out of the settings: Save then reports it (see below).
             if (field.type === 'number' && !field.validity.valid) return;
@@ -613,10 +864,70 @@
                 renderImageTab();
             } else if (field.id === 'ImageSizeReduction') {
                 imageOf(p, state.tab).SizeReduction = parseInt(field.value, 10);
+            } else if (ZONE_FIELDS[field.id] && state.editing && state.editing.kind === 'zone') {
+                var zone = zoneAt(currentImage(), state.editing.position);
+                zone[ZONE_FIELDS[field.id]] = field.id === 'ZoneArrangement' ? field.value : parseFloat(field.value);
+                if (field.id === 'ZoneArrangement') renderImageTab();
             } else {
                 return;
             }
             markDirty();
+        });
+
+        // ===== Drag and drop =====
+        var dragged = null, dropHint = null;
+        function clearDropHint() {
+            if (dropHint) dropHint.classList.remove('over', 'insert-before', 'insert-after');
+            dropHint = null;
+        }
+        // The drop target under the pointer and, for a chip, which side of it.
+        function dropTargetOf(e) {
+            var strip = e.target.closest('.zone-newline');
+            if (strip) return { node: strip, target: { position: strip.getAttribute('data-drop-position') } };
+            var chip = e.target.closest('.panel-chip');
+            if (!chip || chip.getAttribute('data-type') === dragged) return null;
+            var rect = chip.getBoundingClientRect();
+            var vertical = !!chip.closest('.zone-lines.columns');
+            var after = vertical ? e.clientY > rect.top + rect.height / 2 : e.clientX > rect.left + rect.width / 2;
+            return { node: chip, target: { anchor: chip.getAttribute('data-type'), after: after } };
+        }
+        configForm.addEventListener('dragstart', function(e) {
+            var chip = e.target.closest && e.target.closest('.panel-chip');
+            if (!chip) return;
+            dragged = chip.getAttribute('data-type');
+            // Firefox starts a drag only when some data is set.
+            e.dataTransfer.setData('text/plain', dragged);
+            e.dataTransfer.effectAllowed = 'move';
+            chip.classList.add('dragged');
+            chip.closest('.jellytag-zone-grid').classList.add('dragging');
+        });
+        configForm.addEventListener('dragover', function(e) {
+            if (!dragged) return;
+            var hit = dropTargetOf(e);
+            clearDropHint();
+            if (!hit) return;
+            e.preventDefault();
+            dropHint = hit.node;
+            dropHint.classList.add(hit.target.anchor ? (hit.target.after ? 'insert-after' : 'insert-before') : 'over');
+        });
+        configForm.addEventListener('drop', function(e) {
+            if (!dragged) return;
+            var hit = dropTargetOf(e);
+            e.preventDefault();
+            var type = dragged;
+            dragged = null;
+            clearDropHint();
+            if (hit) dropPanel(type, hit.target); else renderImageTab();
+        });
+        configForm.addEventListener('dragend', function() {
+            if (!dragged) return;
+            dragged = null;
+            clearDropHint();
+            renderImageTab();
+        });
+        // The chips are divs: Enter and Space open them like a button.
+        configForm.addEventListener('keydown', function(e) {
+            if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('panel-chip')) { e.preventDefault(); e.target.click(); }
         });
 
         configForm.addEventListener('submit', function(e) {
