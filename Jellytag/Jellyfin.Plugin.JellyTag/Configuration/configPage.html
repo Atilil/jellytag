@@ -83,7 +83,8 @@
             .jellytag-arrows button:hover { background: rgba(0,164,220,.6); }
             .jellytag-arrows button:disabled { opacity: .3; cursor: default; }
             .jellytag-savebar { position: sticky; bottom: 0; z-index: 40; display: flex; align-items: center; gap: 1em; margin-top: 1em; padding: .6em 1em; background: rgba(20,20,20,.97); border-top: 1px solid rgba(255,255,255,.12); }
-            .jellytag-savebar #DirtyState { flex: 1; color: #aaa; }
+            .jellytag-savebar #DirtyState { flex: 1; color: #aaa; text-align: center; }
+            .jellytag-savebar { flex-wrap: wrap; }
             .jellytag-savebar.dirty #DirtyState { color: #ffb74d; }
             .jellytag-savebar button { margin: 0; }
             .jellytag-zone-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5em; margin: 1em 0; }
@@ -132,7 +133,6 @@
                         <h2 class="sectionTitle">JellyTag Configuration</h2>
                     </div>
                     <div class="verticalSection">
-                        <h3 class="sectionTitle">General</h3>
                         <div class="checkboxContainer checkboxContainer-withDescription">
                             <label class="emby-checkbox-label">
                                 <input id="Enabled" type="checkbox" is="emby-checkbox" data-global="Enabled" />
@@ -188,19 +188,18 @@
                         </div>
                     </details>
 
-                    <div class="verticalSection" style="margin-top:1em;">
-                        <button id="ClearCache" type="button" is="emby-button" class="raised button-warning block" style="width:100%;"><span>Clear Image Cache</span></button>
-                        <button id="ExportConfig" type="button" is="emby-button" class="raised block" style="width:100%; margin-top:.5em;"><span>Export Config</span></button>
-                        <button id="ImportConfigBtn" type="button" is="emby-button" class="raised block" style="width:100%; margin-top:.5em;"><span>Import Config</span></button>
-                        <input id="ImportConfigFile" type="file" accept="application/json,.json" style="display:none;" />
-                        <input id="CustomBadgeFile" type="file" accept="image/svg+xml,image/png,image/jpeg" style="display:none;" />
-                        <button id="ResetAllSettings" type="button" is="emby-button" class="raised block" style="background:#888; width:100%; margin-top:.5em;"><span>Reset All Settings to Default</span></button>
-                    </div>
 
                     <div id="SaveError" class="jellytag-field-error hidden" style="margin-top:1em;"></div>
+                    <input id="ImportConfigFile" type="file" accept="application/json,.json" style="display:none;" />
+                    <input id="CustomBadgeFile" type="file" accept="image/svg+xml,image/png,image/jpeg" style="display:none;" />
                     <div id="SaveBar" class="jellytag-savebar">
-                        <span id="DirtyState"></span>
+                        <button id="ClearCache" type="button" is="emby-button" class="raised button-warning"><span>Clear cache</span></button>
+                        <button id="ExportConfig" type="button" is="emby-button" class="raised"><span>Export</span></button>
+                        <button id="ImportConfigBtn" type="button" is="emby-button" class="raised"><span>Import</span></button>
                         <button is="emby-button" type="submit" class="raised button-submit"><span>Save</span></button>
+                        <span id="DirtyState"></span>
+                        <!-- Alone at the far end: it erases every setting. -->
+                        <button id="ResetAllSettings" type="button" is="emby-button" class="raised" style="background:#888;"><span>Reset all</span></button>
                     </div>
                 </form>
                 <div class="jellytag-preview-panel">
