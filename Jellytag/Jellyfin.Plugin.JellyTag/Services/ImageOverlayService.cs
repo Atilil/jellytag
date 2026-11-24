@@ -167,14 +167,16 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
         var sourceContentType = DetectImageContentType(originalImage);
         originalImage.Position = 0;
 
-        using var image = SKBitmap.Decode(originalImage);
+        // SKBitmap.Decode(Stream) disposes the stream it reads: decode a copy of the bytes so the
+        // caller can still serve the original image when decoding or drawing fails.
+        using var copy = new MemoryStream();
+        await originalImage.CopyToAsync(copy).ConfigureAwait(false);
+        var originalBytes = copy.ToArray();
+
+        using var image = SKBitmap.Decode(originalBytes);
         if (image == null)
         {
-            originalImage.Position = 0;
-            var output = new MemoryStream();
-            await originalImage.CopyToAsync(output).ConfigureAwait(false);
-            output.Position = 0;
-            return (output, sourceContentType);
+            return (new MemoryStream(originalBytes), sourceContentType);
         }
 
         // Get ordered panels
@@ -233,11 +235,7 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
 
             if (allPanelGroups.Count == 0)
             {
-                originalImage.Position = 0;
-                var output = new MemoryStream();
-                await originalImage.CopyToAsync(output).ConfigureAwait(false);
-                output.Position = 0;
-                return (output, sourceContentType);
+                return (new MemoryStream(originalBytes), sourceContentType);
             }
 
             var layout = LayoutPanels(image.Width, image.Height, allPanelGroups.Select(g => (g.Panel, g.Sizes)).ToList());
