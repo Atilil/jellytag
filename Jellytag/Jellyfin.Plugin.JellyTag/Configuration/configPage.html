@@ -1436,13 +1436,14 @@
                         searchResults.appendChild(div);});searchResults.style.display='block';});},300);});
             document.addEventListener('click',function(e){if(!searchResults.contains(e.target)&&e.target!==searchInput)searchResults.style.display='none';});
             function refreshPreview(){if(!previewItemId||refreshing)return;refreshing=true;errorEl.style.display='none';errorEl.textContent='';spinner.style.display='block';
-                ApiClient.getPluginConfiguration(JellyTagConfig.pluginUniqueId).then(function(config){collectConfigFromForm(config);return ApiClient.updatePluginConfiguration(JellyTagConfig.pluginUniqueId,config);}).then(function(){
-                    return ApiClient.ajax({type:'POST',url:ApiClient.getUrl('JellyTag/ClearCache')});}).then(function(){
-                    var token=ApiClient.accessToken();var bust='_t='+Date.now();var tp=token?'&ApiKey='+token:'';
-                    var pu=ApiClient.getUrl('Items/'+previewItemId+'/Images/Primary')+'?'+bust+tp;
-                    var tu=ApiClient.getUrl('Items/'+previewItemId+'/Images/Thumb')+'?'+bust+tp;
-                    var pl=new Promise(function(res){var img=new Image();img.onload=function(){posterImg.src=pu;posterImg.style.display='block';res();};img.onerror=function(){posterImg.style.display='none';res();};img.src=pu;});
-                    var tl=new Promise(function(res){var img=new Image();img.onload=function(){thumbImg.src=tu;thumbImg.style.display='block';res();};img.onerror=function(){thumbImg.style.display='none';res();};img.src=tu;});
+                ApiClient.getPluginConfiguration(JellyTagConfig.pluginUniqueId).then(function(config){collectConfigFromForm(config);
+                    // Rendered from the unsaved settings: nothing is saved, the cache stays as it is.
+                    function render(type,imgEl){return fetch(ApiClient.getUrl('JellyTag/Preview/'+previewItemId+'/'+type),{method:'POST',
+                        headers:{'Content-Type':'application/json','Authorization':'MediaBrowser Token="'+ApiClient.accessToken()+'"'},body:JSON.stringify(config)})
+                        .then(function(r){if(!r.ok)throw new Error(r.status);return r.blob();})
+                        .then(function(b){if(imgEl.src.indexOf('blob:')===0)URL.revokeObjectURL(imgEl.src);imgEl.src=URL.createObjectURL(b);imgEl.style.display='block';})
+                        .catch(function(){imgEl.style.display='none';});}
+                    var pl=render('Primary',posterImg),tl=render('Thumb',thumbImg);
                     return Promise.all([pl,tl]);}).then(function(){spinner.style.display='none';refreshing=false;}).catch(function(err){spinner.style.display='none';refreshing=false;errorEl.textContent='Preview error: '+(err.message||err);errorEl.style.display='block';});}
             var form=document.querySelector('#JellyTagConfigForm');
             form.addEventListener('input',function(e){if(e.target.closest('.jellytag-preview-panel'))return;clearTimeout(refreshTimer);refreshTimer=setTimeout(refreshPreview,1500);});

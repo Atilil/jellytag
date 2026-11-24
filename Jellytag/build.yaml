@@ -21,8 +21,6 @@ description: >
 artifacts:
   - "Jellyfin.Plugin.JellyTag.dll"
 changelog: |
-  - Save no longer fails silently: an invalid setting turns red while typing, and
-    Save opens its section and points to it.
-  - Clearer settings: units in the size, margin and gap labels, shorter
-    descriptions, gap up to 100%.
-  - "Join the previous panel's row" is grayed out when it has no effect.
+  - Audio "Channel layout" text colors now apply to the 7.1, 5.1 and stereo badges.
+  - An image that cannot be decoded is served unchanged instead of failing.
+  - The live preview no longer saves the settings or clears the cache on every change.

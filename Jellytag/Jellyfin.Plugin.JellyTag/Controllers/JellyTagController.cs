@@ -2,7 +2,10 @@ using System.Reflection;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Jellyfin.Plugin.JellyTag.Configuration;
+using Jellyfin.Plugin.JellyTag.Middleware;
 using Jellyfin.Plugin.JellyTag.Services;
+using MediaBrowser.Controller.Library;
+using MediaBrowser.Model.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -19,6 +22,7 @@ public partial class JellyTagController : ControllerBase
     private readonly IImageCacheService _cacheService;
     private readonly IImageOverlayService _overlayService;
     private readonly IQualityDetectionService _qualityService;
+    private readonly ILibraryManager _libraryManager;
 
     private static readonly string[] SupportedBadgeExtensions = { ".svg", ".png", ".jpg", ".jpeg" };
 
@@ -37,11 +41,51 @@ public partial class JellyTagController : ControllerBase
     /// <summary>
     /// Initializes a new instance of the <see cref="JellyTagController"/> class.
     /// </summary>
-    public JellyTagController(IImageCacheService cacheService, IImageOverlayService overlayService, IQualityDetectionService qualityService)
+    public JellyTagController(IImageCacheService cacheService, IImageOverlayService overlayService, IQualityDetectionService qualityService, ILibraryManager libraryManager)
     {
+        _libraryManager = libraryManager;
         _cacheService = cacheService;
         _overlayService = overlayService;
         _qualityService = qualityService;
+    }
+
+    /// <summary>
+    /// Renders an item's image with the settings sent by the config page, without saving them
+    /// and without touching the cache.
+    /// </summary>
+    [HttpPost("Preview/{itemId}/{imageType}")]
+    [Authorize(Policy = "RequiresElevation")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Preview(Guid itemId, string imageType, [FromBody] PluginConfiguration config)
+    {
+        if (!Enum.TryParse<ImageType>(imageType, true, out var type) || type is not (ImageType.Primary or ImageType.Thumb))
+        {
+            return NotFound();
+        }
+
+        var item = _libraryManager.GetItemById(itemId);
+        var image = item?.GetImageInfo(type, 0);
+        if (item == null || image == null || !image.IsLocalFile || !System.IO.File.Exists(image.Path))
+        {
+            return NotFound();
+        }
+
+        var original = new MemoryStream(await System.IO.File.ReadAllBytesAsync(image.Path).ConfigureAwait(false));
+        var imageConfig = ImageOverlayMiddleware.GetImageTypeConfig(config, imageType, item);
+        if (imageConfig == null || !imageConfig.Enabled)
+        {
+            return File(original, "image/jpeg");
+        }
+
+        var badges = _qualityService.DetectAllBadges(item).Where(b => _overlayService.ShouldShowBadge(b, imageConfig)).ToList();
+        if (badges.Count == 0)
+        {
+            return File(original, "image/jpeg");
+        }
+
+        var (stream, contentType) = await _overlayService.AddBadgeOverlaysAsync(original, badges, imageConfig).ConfigureAwait(false);
+        return File(stream, contentType);
     }
 
     /// <summary>

@@ -178,7 +178,7 @@ public partial class ImageOverlayMiddleware
         }
     }
 
-    private static ImageTypeConfig? GetImageTypeConfig(PluginConfiguration config, string imageType, BaseItem item)
+    internal static ImageTypeConfig? GetImageTypeConfig(PluginConfiguration config, string imageType, BaseItem item)
     {
         var type = imageType.ToUpperInvariant();
 
