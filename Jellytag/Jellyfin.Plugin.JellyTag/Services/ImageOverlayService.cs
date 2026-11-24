@@ -892,8 +892,7 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
         var opacity = (byte)Math.Clamp(panel.TextBgOpacity, 0, 255);
         var cornerRadius = Math.Clamp(panel.TextCornerRadius, 0, 50);
 
-        // Per-badge-type overrides
-        var typeOverride = panel.BadgeTypeOverrides?.FirstOrDefault(o => string.Equals(o.BadgeKey, badge.BadgeKey, StringComparison.OrdinalIgnoreCase));
+        var typeOverride = FindStyleOverride(badge.BadgeKey, panel);
         if (typeOverride != null)
         {
             if (!string.IsNullOrEmpty(typeOverride.BgColor)) bgColor = typeOverride.BgColor;
@@ -903,6 +902,21 @@ public class ImageOverlayService : IImageOverlayService, IDisposable
         }
 
         return (bgColor, textColor, opacity, cornerRadius);
+    }
+
+    /// <summary>
+    /// The config page offers one "Channel layout" entry for the 7.1, 5.1 and stereo badges and
+    /// stores its colors under the key "channel". A badge's own key still wins.
+    /// </summary>
+    internal static BadgeTypeStyleOverride? FindStyleOverride(string badgeKey, BadgePanelSettings panel)
+    {
+        var overrides = panel.BadgeTypeOverrides;
+        if (overrides == null) return null;
+
+        var own = overrides.FirstOrDefault(o => string.Equals(o.BadgeKey, badgeKey, StringComparison.OrdinalIgnoreCase));
+        if (own != null || badgeKey is not ("7.1" or "5.1" or "stereo")) return own;
+
+        return overrides.FirstOrDefault(o => string.Equals(o.BadgeKey, "channel", StringComparison.OrdinalIgnoreCase));
     }
 
     private static void RenderTextBadges(SKCanvas canvas, List<BadgeInfo> badges, List<SKPointI> positions, List<SKSizeI> sizes, BadgePanelSettings panel, ImageTypeConfig imageConfig, List<SKBitmap?>? icons = null)
